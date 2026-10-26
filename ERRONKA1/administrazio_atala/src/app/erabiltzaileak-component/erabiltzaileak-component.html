@@ -1,0 +1,22 @@
+<body>
+    <div class="grid-container">
+        <h2 class="text-center mt-5 mb-5">ERABILTZAILEEN ZERRENDA</h2>
+
+        <!-- AG Grid Component -->
+
+        <div class="d-flex justify-content-center w-100">
+            <ag-grid-angular
+                style="width: 80%; height: 400px;"
+                [rowData]="datuak()"
+                [columnDefs]="colDefs"
+                [defaultColDef]="defaultColDef"
+                [pagination]="pagination"
+                [paginationPageSize]="paginationPageSize"
+                [paginationPageSizeSelector]="paginationPageSizeSelector"
+                (gridReady)="onGridReady($event)"
+                (selectionChanged)="onSelectionChanged($event)">
+            </ag-grid-angular>
+        </div>
+
+    </div>
+</body>
