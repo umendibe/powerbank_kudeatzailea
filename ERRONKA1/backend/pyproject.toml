@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Powerbank-en alokaziorako API-a"
 readme = "README.md"
 authors = [
     { name = "umendibe", email = "ikumendibe25@lhusurbil.eus" }
