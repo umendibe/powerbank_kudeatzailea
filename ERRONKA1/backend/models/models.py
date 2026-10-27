@@ -12,17 +12,17 @@ class Rol(Base):
     id_rol: Mapped[int] = mapped_column(primary_key=True, index=True)
     izena: Mapped[str] = mapped_column(String(100))
 
-class Erabiltzailea(Base):
+class Erabiltzaileak(Base):
     __tablename__ = "erabiltzaileak"
     
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id_erab: Mapped[int] = mapped_column(primary_key=True, index=True)
     nan: Mapped[str] = mapped_column(String(9), nullable=False, unique=True)
     izena: Mapped[str] = mapped_column(String(100), nullable=False)
     abizenak: Mapped[str] = mapped_column(String(250), nullable=False)
     email: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     pasahitza: Mapped[str] = mapped_column(String(200), nullable=False)
     helbidea: Mapped[str] = mapped_column(String(250), nullable=False)
-    rol: Mapped[int] = mapped_column(ForeignKey("rolak.id_rol"), nullable=False)
+    id_rol: Mapped[int] = mapped_column(ForeignKey("rolak.id_rol"), nullable=False)
     
 class Takillak(Base):
     __tablename__ = "takillak"
