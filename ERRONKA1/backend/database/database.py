@@ -1,6 +1,6 @@
 import psycopg
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 URL ="postgresql://postgres:postgres@localhost:5432/powerbank_erreserba"
 
@@ -11,7 +11,8 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 def get_connection():
     db = SessionLocal()
