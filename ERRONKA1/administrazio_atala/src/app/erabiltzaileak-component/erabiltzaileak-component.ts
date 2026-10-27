@@ -42,23 +42,29 @@ export class ErabiltzaileakComponent implements OnInit {
     this.lortuInfo();
   }
 
+  // getInfo(): Observable<any> {
+  //   const url = `http://localhost:8000/powerbanks`;
+  //   return this.http.get<any[]>(url).pipe(
+  //     map((res: any[])=> {
+  //       return res.map((row: any[]) => ({
+  //         id_erab: row[0],
+  //         nan: row[1],
+  //         izena: row[2],
+  //         abizenak: row[3],
+  //         email: row[4],
+  //         pasahitza: row[5],
+  //         helbidea: row[6],
+  //         rol: row[7]
+  //       }))
+  //     })
+  //   );
+  // }
+
   getInfo(): Observable<any> {
-    const url = `http://localhost:8000/powerbanks`;
-    return this.http.get<any[]>(url).pipe(
-      map((res: any[])=> {
-        return res.map((row: any[]) => ({
-          id_erab: row[0],
-          nan: row[1],
-          izena: row[2],
-          abizenak: row[3],
-          email: row[4],
-          pasahitza: row[5],
-          helbidea: row[6],
-          rol: row[7]
-        }))
-      })
-    );
+    const url = `http://localhost:8000/powerbanks/erabiltzaileak`;
+    return this.http.get(url);
   }
+
 
   lortuInfo(): void {
     this.getInfo().subscribe ({

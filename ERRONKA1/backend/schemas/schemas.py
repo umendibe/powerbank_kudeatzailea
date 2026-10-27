@@ -4,12 +4,12 @@ from pydantic import BaseModel, Field
 
 # Erabiltzaileak zerrendatzeko (taula, zerrenda bat...)
 class ListErabiltzaileak(BaseModel):
-    id: int
+    id_erab: int
     nan: str = Field(min_length=9, max_length=9)
     izena: str = Field(min_length=2)
     abizenak: str = Field(min_length=2)
     email: str = Field(max_length=200)
-    pasahitza: str = Field(min_length=6)
+    pasahitza: str = Field(min_length=3)
     helbidea: str = Field(min_length=5)
     id_rol: int = Field(ge=1, le=2)
 
