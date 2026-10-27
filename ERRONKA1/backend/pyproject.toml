@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Powerbank reservation backend"
 readme = "README.md"
 authors = [
     { name = "umendibe", email = "ikumendibe25@lhusurbil.eus" }
@@ -10,6 +10,8 @@ requires-python = ">=3.14"
 dependencies = [
     "fastapi[standard]>=0.162.0",
     "sqlalchemy>=2.1.6",
+    "passlib[bcrypt]>=1.7.4",
+    "uvicorn>=0.30.0",
 ]
 
 [project.scripts]
