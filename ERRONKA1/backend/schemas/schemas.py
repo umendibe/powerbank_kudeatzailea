@@ -1,7 +1,13 @@
-<<<<<<< HEAD
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field,ConfigDict
+from datetime import datetime
 
 # ERABILTZAILEEN ESKEMAK
+
+# Erabiltzailearen Login-a egiteko
+class ErabiltzaileLogin(BaseModel):
+    email: str
+    pasahitza: str
+
 
 # Erabiltzaileak zerrendatzeko (taula, zerrenda bat...)
 class ListErabiltzaileak(BaseModel):
@@ -69,15 +75,9 @@ class CreatePowerbank(BaseModel):
     id_takilla: int
     id_postu: int
     karga: int = Field(ge=0, le= 100)
-=======
-from datetime import datetime
-
-from pydantic import BaseModel, ConfigDict
-
-
-class ErabiltzaileLogin(BaseModel):
-    email: str
-    pasahitza: str
+    
+########################### ERRESERBAK-AK###########################
+    
 
 
 class ErreserbaCreate(BaseModel):
@@ -94,4 +94,4 @@ class ErreserbaResponse(ErreserbaCreate):
     egoera: str
 
     model_config =  ConfigDict(from_attributes=True)
->>>>>>> master
+

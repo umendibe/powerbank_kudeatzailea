@@ -1,11 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-<<<<<<< HEAD
-description = "Powerbank-en alokaziorako API-a"
-=======
 description = "Powerbank reservation backend"
->>>>>>> master
 readme = "README.md"
 authors = [
     { name = "umendibe", email = "ikumendibe25@lhusurbil.eus" }
@@ -16,6 +12,7 @@ dependencies = [
     "sqlalchemy>=2.1.6",
     "passlib[bcrypt]>=1.7.4",
     "uvicorn>=0.30.0",
+    "psycopg[binary]>=3.2.0",
 ]
 
 [project.scripts]

@@ -1,12 +1,9 @@
-<<<<<<< HEAD
-
 from fastapi import HTTPException, status
+from models import models
+from schemas import schemas
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-
-from models import models
-from schemas import schemas
 
 
 def get_all_erabiltzaileak(session: Session):
@@ -31,12 +28,7 @@ def post_erabiltzaile(db: Session, erabiltzaile: schemas.CreateErabiltzaile):
         return db_erabiltzaile
     except IntegrityError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
-=======
-from sqlalchemy.orm import Session
-
-from models.models import Erreserbak
-
-
+    
+    
 def list_erreserbak(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Erreserbak).offset(skip).limit(limit).all()
->>>>>>> master
+    return db.query(models.Erreserbak).offset(skip).limit(limit).all()
