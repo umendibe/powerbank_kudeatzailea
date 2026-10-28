@@ -1,18 +1,18 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-
 from database import database
+from fastapi import APIRouter, Depends, HTTPException, status
+from models import models
 from schemas import schemas
 from services import services
-from models import models
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+DbSession = Annotated[Session, Depends(database.get_session)]
 
 
 powerbank_router = APIRouter(prefix="/powerbanks", tags=["POWERBANKS"])
 
-DbSession = Annotated[Session, Depends(database.get_session)]
 
 @powerbank_router.get("/erabiltzaileak", status_code=200, response_model=list[schemas.ListErabiltzaileak])
 def get_all_participants(session: DbSession):
@@ -28,9 +28,8 @@ def create_erabiltzaile(session: DbSession, erabiltzaile: schemas.CreateErabiltz
 
 
 @powerbank_router.get("/", response_model=list[schemas.ErreserbaResponse])
-def read_powerbanks(db: DbSession):
-    reservations = db.query(models.Erreserbak).all()
-    return reservations
+def read_powerbanks(session: DbSession):
+    return services.list_erreserbak(session)
 
 
 ###TODO, HAU ALDATU EGIN BEHAR DA MIKELEK ESKATU DUEN MODUAN EGITEKO

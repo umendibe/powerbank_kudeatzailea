@@ -1,7 +1,7 @@
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String,DateTime
+from database.database import Base
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database.database import Base
 
 class Rol(Base):
     __tablename__ = "rolak"
@@ -48,7 +48,7 @@ class Powerbank(Base):
 class Erreserbak(Base):
     __tablename__ = "erreserbak"
     
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id_erreserba: Mapped[int] = mapped_column(primary_key=True, index=True)
     id_erab: Mapped[int] = mapped_column(ForeignKey("erabiltzaileak.id_erab"), nullable=False)
     id_power: Mapped[int] = mapped_column(ForeignKey("powerbank.id_power"), nullable=False)
     erreserba_hasiera: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
