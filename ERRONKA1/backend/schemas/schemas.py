@@ -30,6 +30,15 @@ class CreateErabiltzaile(BaseModel):
     pasahitza: str = Field(min_length=6)
     helbidea: str = Field(min_length=5)
     id_rol: int = Field(ge=1, le=2)
+
+class PatchErabiltzaile(BaseModel):
+    nan: str | None = Field(default=None, min_length=9, max_length=9)
+    izena: str | None = Field(default=None,min_length=2)
+    abizenak: str | None = Field(default=None,min_length=2)
+    email: str | None = Field(default=None,max_length=200)
+    pasahitza: str | None = Field(default=None,min_length=6)
+    helbidea: str | None = Field(default=None,min_length=5)
+    id_rol: int | None = Field(default=None,ge=1, le=2)
     
 # ERRESERBEN ESKEMAK
 
@@ -95,4 +104,28 @@ class ErreserbaResponse(ErreserbaCreate):
     egoera: str
 
     model_config =  ConfigDict(from_attributes=True)
+    
+    
+############### KARGAGUNEAK ###############
+
+# Takillak sortu
+class CreateTakilla(BaseModel):
+    izena: str = Field(min_length=2, max_length=100)
+    helbidea: str = Field(min_length=3, max_length=200)
+    irudia: str = Field(max_length=500)
+    egoera: str = Field(max_length=20)
+    
+class PatchTakilla(BaseModel):
+    izena: str | None = Field(default=None, min_length=2, max_length=100)
+    helbidea: str | None = Field(default=None,min_length=3, max_length=200)
+    irudia: str | None = Field(default=None,max_length=500)
+    egoera: str | None = Field(default=None,max_length=20)
+    
+
+class TakillaResponse(BaseModel):
+    id_takilla: int
+    izena: str = Field(min_length=2, max_length=100)
+    helbidea: str = Field(min_length=3, max_length=200)
+    irudia: str = Field(max_length=500)
+    egoera: str = Field(max_length=20)
 

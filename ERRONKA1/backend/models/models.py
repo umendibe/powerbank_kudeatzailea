@@ -1,5 +1,7 @@
+import enum
+
 from database.database import Base
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -20,15 +22,20 @@ class Erabiltzaileak(Base):
     pasahitza: Mapped[str] = mapped_column(String(200), nullable=False)
     helbidea: Mapped[str] = mapped_column(String(250), nullable=False)
     id_rol: Mapped[int] = mapped_column(ForeignKey("rolak.id_rol"), nullable=False)
+
+class TakillakEgoeraEnum(str, enum.Enum):
+    erabilgarri = "erabilgarri"
+    mantentze_lanetan = "mantentze_lanetan"
+    zerbitzuz_kanpo = "zerbitzuz_kanpo"
     
 class Takillak(Base):
     __tablename__ = "takillak"
     
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id_takilla: Mapped[int] = mapped_column(primary_key=True, index=True)
     izena: Mapped[str] = mapped_column(String(200), nullable=False)
     helbidea: Mapped[str] = mapped_column(String(250), nullable=False)
     irudia: Mapped[str] = mapped_column(String(500), nullable=False)
-    egoera: Mapped[str] = mapped_column(String (50), nullable=False)
+    egoera: Mapped[TakillakEgoeraEnum] = mapped_column(Enum(TakillakEgoeraEnum, name="egoera_takillak", create_type=False), nullable=False)
     
 class Postuak(Base):
     __tablename__ = "postuak"

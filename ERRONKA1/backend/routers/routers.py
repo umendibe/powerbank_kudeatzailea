@@ -11,26 +11,61 @@ from sqlalchemy.orm import Session
 DbSession = Annotated[Session, Depends(database.get_session)]
 
 
-powerbank_router = APIRouter(prefix="/powerbanks", tags=["POWERBANKS"])
+powerbank_router = APIRouter(prefix="/alokaziosistema", tags=["POWERBANKS"])
 
+################# GET ENDPOINTAK #################
 
+# Erabiltzaile guztiak lortu
 @powerbank_router.get("/erabiltzaileak", status_code=200, response_model=list[schemas.ListErabiltzaileak])
 def get_all_participants(session: DbSession):
     return services.get_all_erabiltzaileak(session)
 
+
+# Erabiltzaile bakarra lortu id bitartez
 @powerbank_router.get("/erabiltzaileak/{id}", status_code=200, response_model=schemas.ListErabiltzaileak)
 def get_by_id(id: int, session: DbSession):
     return services.get_erabiltzaile_id(id, session)
+
+
+# Powerbank guztiak lortu
+@powerbank_router.get("/powerbanks", response_model=list[schemas.ErreserbaResponse])
+def read_powerbanks(session: DbSession):
+    return services.list_erreserbak(session)
+
+
+# Erabiltzaile baten erreserba guztiak lortu
+@powerbank_router.get("/erabiltzaileak/{id}/erreserbak", status_code=200, response_model=list[schemas.ListErreserbak])
+def get_erreserbak_erabiltzaile(id: int, session: DbSession):
+    return services.list_erabiltzaile_erreserba(session, id)
+
+
+################# POST ENDPOINTAK #################
 
 @powerbank_router.post("/erabiltzaileak/post", status_code=201, response_model=schemas.CreateErabiltzaile)
 def create_erabiltzaile(session: DbSession, erabiltzaile: schemas.CreateErabiltzaile):
     return services.post_erabiltzaile(session, erabiltzaile)
 
 
-@powerbank_router.get("/", response_model=list[schemas.ErreserbaResponse])
-def read_powerbanks(session: DbSession):
-    return services.list_erreserbak(session)
+@powerbank_router.post("/powerbanks/post", status_code=201, response_model=schemas.TakillaResponse)
+def post_takilla(session: DbSession, takilla: schemas.CreateTakilla):
+    return services.create_takilla(session, takilla)
 
+@powerbank_router.patch("/erabiltzaileak/{id}/eguneratu", status_code=200, response_model=schemas.ListErabiltzaileak)
+def update_erabiltzaile(id: int, erabiltzaile: schemas.PatchErabiltzaile, session: DbSession):
+    return services.patch_erabiltzailea(session, id, erabiltzaile)
+
+
+@powerbank_router.patch("/erabiltzaileak/{id}/rola", status_code=200, response_model=schemas.ListErabiltzaileak)
+def update_rola(id: int, rola: int, session: DbSession):
+    return services.update_rola(session, id, rola)
+
+@powerbank_router.patch("/takillak/{id}/eguneratu", status_code=200, response_model=schemas.TakillaResponse)
+def update_takilla(id: int, takilla: schemas.PatchTakilla, session: DbSession):
+    return services.patch_takilla(session, id, takilla)
+
+@powerbank_router.delete("/takillak/{id}/delete", status_code=status.HTTP_200_OK)
+def delete_takilla(id, session: DbSession):
+    return services.delete_takilla(session, id)
 
 ###TODO, HAU ALDATU EGIN BEHAR DA MIKELEK ESKATU DUEN MODUAN EGITEKO
 @powerbank_router.post("/", response_model=schemas.ErreserbaResponse, status_code=status.HTTP_201_CREATED)
