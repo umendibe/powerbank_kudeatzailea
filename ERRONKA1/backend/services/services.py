@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -30,3 +31,12 @@ def post_erabiltzaile(db: Session, erabiltzaile: schemas.CreateErabiltzaile):
         return db_erabiltzaile
     except IntegrityError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
+=======
+from sqlalchemy.orm import Session
+
+from models.models import Erreserbak
+
+
+def list_erreserbak(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(Erreserbak).offset(skip).limit(limit).all()
+>>>>>>> master
