@@ -36,7 +36,7 @@ def list_erreserbak(db: Session):
         stmt = select(models.Erreserbak).order_by(models.Erreserbak.id_erreserba)
         return db.scalars(stmt).all()
     except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail="Errorea erreserbak ekartzen") from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Errorea erreserbak ekartzen") from e
     
 def patch_erabiltzailea(db: Session, id: int, erabiltzaile: schemas.CreateErabiltzaile):
     db_erabiltzaile = db.get(models.Erabiltzaileak, id)
@@ -116,3 +116,62 @@ def delete_takilla(db: Session, id: int):
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
+    
+def post_irudia(db: Session, id_takilla: int, irudia: schemas.TakillaIrudiaCreate):
+    db_takilla = db.get(models.Takillak, id_takilla)
+    if not db_takilla:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da takilla aurkitu")
+    
+    db_irudia = models.TakillakIrudiak(id_takilla=id_takilla, url=irudia.url)
+    
+    try:
+        db.add(db_irudia)
+        db.commit()
+        db.refresh(db_irudia)
+        return db_irudia
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Errorea irudia gordetzean") from e
+    
+def patch_irudia(db: Session, id_irudi: int, irudia: schemas.TakillaIrudiaUpdate):
+    db_irudia = db.get(models.TakillakIrudiak, id_irudi)
+    if not db_irudia:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da irudia aurkitu")
+    
+    for field, value in irudia.model_dump(exclude_unset=True).items():
+        setattr(db_irudia, field, value)
+    
+    try:
+        db.commit()
+        db.refresh(db_irudia)
+        return db_irudia
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Errorea irudia eguneratzean") from e
+    
+def create_powerbank(db: Session, powerbank: schemas.CreatePowerbank):
+    db_powerbank = models.Powerbank(**powerbank.model_dump())
+    try:
+        db.add(db_powerbank)
+        db.commit()
+        db.refresh(db_powerbank)
+        return db_powerbank
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea powerbank-a sortzen") from e
+    
+def patch_powerbank_position(db: Session, id_power: int, powerbank: schemas.PowerbankTokiaPatch):
+    db_powerbank = db.get(models.Powerbank, id_power)
+    if not db_powerbank:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da powerbank-a aurkitu")
+    
+    for field, value in powerbank.model_dump(exclude_unset=True).items():
+        setattr(db_powerbank, field, value)
+        
+    try:
+        db.commit()
+        db.refresh(db_powerbank)
+        return db_powerbank
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea powerbankaren tokia aldatzen") from e

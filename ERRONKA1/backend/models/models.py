@@ -34,20 +34,26 @@ class Takillak(Base):
     id_takilla: Mapped[int] = mapped_column(primary_key=True, index=True)
     izena: Mapped[str] = mapped_column(String(200), nullable=False)
     helbidea: Mapped[str] = mapped_column(String(250), nullable=False)
-    irudia: Mapped[str] = mapped_column(String(500), nullable=False)
     egoera: Mapped[TakillakEgoeraEnum] = mapped_column(Enum(TakillakEgoeraEnum, name="egoera_takillak", create_type=False), nullable=False)
+    
+class TakillakIrudiak(Base):
+    __tablename__ = "takillak_irudiak"
+    
+    id_irudi: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id_takilla: Mapped[int] = mapped_column(ForeignKey("takillak.id_takilla"), nullable=False)
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
     
 class Postuak(Base):
     __tablename__ = "postuak"
     
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    id_takilla: Mapped[int] = mapped_column(ForeignKey("takillak.id_takilla"), nullable=False)
+    id_postu: Mapped[int] = mapped_column(ForeignKey("takillak.id_takilla"), nullable=False)
     egoera: Mapped[str] = mapped_column(String(50), nullable=False)
     
 class Powerbank(Base):
     __tablename__ = "powerbank"
     
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id_power: Mapped[int] = mapped_column(primary_key=True, index=True)
     id_postu: Mapped[int] = mapped_column(ForeignKey("postuak.id_postu"), nullable=False, unique=True)
     id_takilla: Mapped[int] = mapped_column(ForeignKey("takillak.id_takilla"), nullable=False)
     karga: Mapped[int] = mapped_column(Integer, CheckConstraint("karga >= 0 AND karga <= 100")) 
@@ -67,4 +73,3 @@ class Erreserbak(Base):
     id_hasiera_postua: Mapped[int] = mapped_column(ForeignKey("postuak.id_postu"), nullable=False)
     id_bukaera_postua: Mapped[int] = mapped_column(ForeignKey("postuak.id_postu"), nullable=True)
     egoera: Mapped[str] = mapped_column(String(50), nullable=False)
-    

@@ -75,7 +75,7 @@ class CreateErreserba(BaseModel):
 
 #Powerbank-ak listatzeko (bakoitza non dagoen jakiteko)
 class ListPowerbank(BaseModel):
-    id: int
+    id_power: int
     id_takilla: int
     id_postu: int
     karga: int = Field(ge=0, le= 100)
@@ -85,6 +85,10 @@ class CreatePowerbank(BaseModel):
     id_takilla: int
     id_postu: int
     karga: int = Field(ge=0, le= 100)
+    
+class PowerbankTokiaPatch(BaseModel):
+    id_takilla: int | None = Field(default=None)
+    id_postu: int | None = Field(default=None)
     
 ########################### ERRESERBAK-AK###########################
     
@@ -112,20 +116,19 @@ class ErreserbaResponse(ErreserbaCreate):
 class CreateTakilla(BaseModel):
     izena: str = Field(min_length=2, max_length=100)
     helbidea: str = Field(min_length=3, max_length=200)
-    irudia: str = Field(max_length=500)
     egoera: str = Field(max_length=20)
     
 class PatchTakilla(BaseModel):
     izena: str | None = Field(default=None, min_length=2, max_length=100)
     helbidea: str | None = Field(default=None,min_length=3, max_length=200)
-    irudia: str | None = Field(default=None,max_length=500)
     egoera: str | None = Field(default=None,max_length=20)
     
-
 class TakillaResponse(BaseModel):
     id_takilla: int
     izena: str = Field(min_length=2, max_length=100)
     helbidea: str = Field(min_length=3, max_length=200)
-    irudia: str = Field(max_length=500)
     egoera: str = Field(max_length=20)
+    
+class TakillaIrudiaCreate(BaseModel):
+    url: str = Field(max_length=500)
 

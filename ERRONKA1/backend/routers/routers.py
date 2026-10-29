@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from models import models
 from schemas import schemas
 from services import services
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 DbSession = Annotated[Session, Depends(database.get_session)]
@@ -39,6 +38,11 @@ def get_erreserbak_erabiltzaile(id: int, session: DbSession):
     return services.list_erabiltzaile_erreserba(session, id)
 
 
+@powerbank_router.get("/erreserbak", status_code=status.HTTP_200_OK, response_model=list[schemas.ErreserbaResponse])
+def get_erreserbak(session: DbSession):
+    return services.list_erreserbak(session)
+
+
 ################# POST ENDPOINTAK #################
 
 @powerbank_router.post("/erabiltzaileak/post", status_code=201, response_model=schemas.CreateErabiltzaile)
@@ -46,9 +50,21 @@ def create_erabiltzaile(session: DbSession, erabiltzaile: schemas.CreateErabiltz
     return services.post_erabiltzaile(session, erabiltzaile)
 
 
-@powerbank_router.post("/powerbanks/post", status_code=201, response_model=schemas.TakillaResponse)
+@powerbank_router.post("/takillak/post", status_code=201, response_model=schemas.TakillaResponse)
 def post_takilla(session: DbSession, takilla: schemas.CreateTakilla):
     return services.create_takilla(session, takilla)
+
+
+@powerbank_router.post("/takillak/{id}/postIrudia", status_code=201, response_model=schemas.TakillaIrudiaCreate)
+def post_irudia(session: DbSession, id: int, irudia: schemas.TakillaIrudiaCreate):
+    return services.post_irudia(session, id, irudia)
+
+
+@powerbank_router.post("/powerbanks/post", status_code=201, response_model=schemas.CreatePowerbank)
+def create_powerbank(session: DbSession, powerbank: schemas.CreatePowerbank):
+    return services.create_powerbank(session, powerbank)
+
+################# PATCH ENDPOINTAK #################
 
 @powerbank_router.patch("/erabiltzaileak/{id}/eguneratu", status_code=200, response_model=schemas.ListErabiltzaileak)
 def update_erabiltzaile(id: int, erabiltzaile: schemas.PatchErabiltzaile, session: DbSession):
@@ -62,6 +78,18 @@ def update_rola(id: int, rola: int, session: DbSession):
 @powerbank_router.patch("/takillak/{id}/eguneratu", status_code=200, response_model=schemas.TakillaResponse)
 def update_takilla(id: int, takilla: schemas.PatchTakilla, session: DbSession):
     return services.patch_takilla(session, id, takilla)
+
+
+@powerbank_router.patch("/takillak/{id}/aldatuIrudia", status_code=200, response_model=schemas.TakillaIrudiaCreate)
+def pathc_irudia(session: DbSession, id: int, irudia: schemas.TakillaIrudiaCreate):
+    return services.patch_irudia(session, id, irudia)
+
+
+@powerbank_router.patch("/powerbanks/{id}/aldatuTokia", status_code=status.HTTP_200_OK, response_model=schemas.ListPowerbank)
+def powerbank_tokia_aldatu(session: DbSession, id: int, powerbank: schemas.PowerbankTokiaPatch):
+    return services.patch_powerbank_position(session, id, powerbank)
+
+################# DELETE ENDPOINTAK #################
 
 @powerbank_router.delete("/takillak/{id}/delete", status_code=status.HTTP_200_OK)
 def delete_takilla(id, session: DbSession):
