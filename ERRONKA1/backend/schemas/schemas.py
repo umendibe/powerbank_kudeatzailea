@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
 
 # ERABILTZAILEEN ESKEMAK
 class CreateErabiltzaile(BaseModel):
@@ -23,6 +22,7 @@ class ErabiltzaileResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        orm_mode = True
 
 # ERRESERBEN ESKEMAK
 class ErreserbaCreate(BaseModel):
@@ -44,3 +44,4 @@ class ErreserbaResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        orm_mode = True
