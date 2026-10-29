@@ -1,0 +1,49 @@
+<div class="container mt-4">
+  <h2>Erreserben Kudeaketa</h2>
+
+  <input
+    type="text"
+    class="form-control mb-3"
+    placeholder="Iragazi erreserbak..."
+    [(ngModel)]="iragazkia"
+  />
+
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th>Erabiltzailea (ID)</th>
+        <th>Hasiera Data</th>
+        <th>Amaiera Data</th>
+        <th>Egoera</th>
+        <th>Ekintzak</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let erreserba of erreserbak">
+        <td>{{ erreserba.id_erab }}</td>
+        <td>{{ erreserba.erreserba_hasiera | date: 'short' }}</td>
+        <td>{{ erreserba.erreserba_bukaera | date: 'short' }}</td>
+        <td>
+          <span
+            class="badge"
+            [ngClass]="{
+              'bg-success': erreserba.egoera === 'aktiboa',
+              'bg-danger': erreserba.egoera === 'ezeztatuta',
+            }"
+          >
+            {{ erreserba.egoera }}
+          </span>
+        </td>
+        <td>
+          <button
+            *ngIf="erreserba.egoera === 'aktiboa'"
+            class="btn btn-danger btn-sm"
+            (click)="erreserbaEzeztatu(erreserba.id_erreserba)"
+          >
+            Ezeztatu
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

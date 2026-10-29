@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-URL ="postgresql://postgres:postgres@localhost:5432/powerbank_erreserba"
+URL ="postgresql://postgres:postgres@localhost:5432/postgres"
 
 engine = create_engine(
     URL,

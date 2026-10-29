@@ -1,0 +1,56 @@
+<div class="container mt-4">
+  <h2>Kargaguneen Kudeaketa</h2>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Kargagune Berria Sortu</h5>
+      <form (ngSubmit)="kargaguneaSortu()">
+        <div class="mb-3">
+          <label class="form-label">Izena</label>
+          <input
+            type="text"
+            class="form-control"
+            [(ngModel)]="kargaguneBerria.izena"
+            name="izena"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Helbidea</label>
+          <input
+            type="text"
+            class="form-control"
+            [(ngModel)]="kargaguneBerria.helbidea"
+            name="helbidea"
+            required
+          />
+        </div>
+        <button type="submit" class="btn btn-primary">Gorde</button>
+      </form>
+    </div>
+  </div>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Izena</th>
+        <th>Helbidea</th>
+        <th>Egoera</th>
+        <th>Ekintzak</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let k of kargaguneak">
+        <td>{{ k.izena }}</td>
+        <td>{{ k.helbidea }}</td>
+        <td>{{ k.egoera }}</td>
+        <td>
+          <button class="btn btn-warning btn-sm me-2">Aldatu</button>
+          <button class="btn btn-danger btn-sm" (click)="kargaguneaDesaktibatu(k.id_takilla)">
+            Desaktibatu
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
