@@ -30,7 +30,7 @@ class Erabiltzaileak(Base):
     pasahitza: Mapped[str] = mapped_column(String(200), nullable=False)
     helbidea: Mapped[str] = mapped_column(String(250), nullable=False)
     id_rol: Mapped[int] = mapped_column(ForeignKey("rolak.id_rol"), nullable=False)
-    activo: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    # activo: Mapped[bool] = mapped_column(Boolean, nullable=False)
     
 class TakillakEgoeraEnum(str, enum.Enum):
     erabilgarri = "erabilgarri"

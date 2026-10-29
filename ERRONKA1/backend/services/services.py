@@ -1,198 +1,84 @@
-from fastapi import HTTPException, status
-from models import models
-from schemas import schemas
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+from fastapi import HTTPException
+from models.models import Erabiltzaileak, Erreserbak, Postuak
+from schemas.schemas import CreateErabiltzaile, ErreserbaCreate
+from services.auth import get_password_hash
+from datetime import datetime
 
+# ERABILTZAILEEN LOGIKA
+def get_erabiltzaileak(db: Session):
+    return db.execute(select(Erabiltzaileak)).scalars().all()
 
-def get_all_erabiltzaileak(db: Session):
-    try:
-        stmt = select(models.Erabiltzaileak).order_by(models.Erabiltzaileak.id_erab)
-        return db.scalars(stmt).all()
-    except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail="Errorea erabiltzaileak ekartzen") from e
+def get_erabiltzaile_by_id(db: Session, erab_id: int):
+    erabiltzailea = db.execute(select(Erabiltzaileak).where(Erabiltzaileak.id_erab == erab_id)).scalars().first()
+    if not erabiltzailea:
+        raise HTTPException(status_code=404, detail="Erabiltzailea ez da aurkitu")
+    return erabiltzailea
 
-def get_erabiltzaile_id(id: int, db: Session):
-    erabiltzaile = db.get(models.Erabiltzaileak, id,)
-    if erabiltzaile is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da existitzen")
-    return erabiltzaile
+def post_erabiltzaile(db: Session, erabiltzaile_berria: CreateErabiltzaile):
+    # Emaila existitzen den konprobatu
+    db_email = db.execute(select(Erabiltzaileak).where(Erabiltzaileak.email == erabiltzaile_berria.email)).scalars().first()
+    if db_email:
+        raise HTTPException(status_code=400, detail="Email hori jada erregistratuta dago.")
 
+    # NAN existitzen den konprobatu
+    db_nan = db.execute(select(Erabiltzaileak).where(Erabiltzaileak.nan == erabiltzaile_berria.nan)).scalars().first()
+    if db_nan:
+        raise HTTPException(status_code=400, detail="NAN hori jada erregistratuta dago.")
 
-def delete_erabiltzaile(db: Session, id: int):
-    erabiltzaile = db.get(models.Erabiltzaileak, id)
-    if erabiltzaile is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
+    zifratua = get_password_hash(erabiltzaile_berria.pasahitza)
 
-    try:
-        db.delete(erabiltzaile)
-        db.commit()
-        return {"message": "Erabiltzailea ondo ezabatu da", "id": id}
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Erabiltzailea ezin da ezabatu, erreserbak lotuta dauzka.",
-        ) from e
+    berria = Erabiltzaileak(
+        nan=erabiltzaile_berria.nan,
+        izena=erabiltzaile_berria.izena,
+        abizenak=erabiltzaile_berria.abizenak,
+        email=erabiltzaile_berria.email,
+        pasahitza=zifratua,
+        helbidea=erabiltzaile_berria.helbidea,
+        id_rol=erabiltzaile_berria.id_rol
+    )
+    
+    db.add(berria)
+    db.commit()
+    db.refresh(berria)
+    return berria
 
-
-def post_erabiltzaile(db: Session, erabiltzaile: schemas.CreateErabiltzaile):
-    db_erabiltzaile = models.Erabiltzaileak(**erabiltzaile.model_dump(), activo=True)
-    try:
-        db.add(db_erabiltzaile)
-        db.commit()
-        db.refresh(db_erabiltzaile)
-        return db_erabiltzaile
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Ezin da erabiltzailea gorde: NANa edo emaila dagoeneko erregistratuta egon daiteke, edo hautatutako rola ez da baliozkoa.",
-        ) from e
-    
-    
-def list_erreserbak(db: Session):
-    try:
-        stmt = select(models.Erreserbak).order_by(models.Erreserbak.id_erreserba)
-        return db.scalars(stmt).all()
-    except SQLAlchemyError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Errorea erreserbak ekartzen") from e
-    
-def patch_erabiltzailea(db: Session, id: int, erabiltzaile: schemas.CreateErabiltzaile):
-    db_erabiltzaile = db.get(models.Erabiltzaileak, id)
-    if not db_erabiltzaile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da existitzen")
-    
-    for field, value in erabiltzaile.model_dump(exclude_unset=True).items():
-        setattr(db_erabiltzaile, field, value)
-    
-    try:
-        db.commit()
-        db.refresh(db_erabiltzaile)
-        return db_erabiltzaile
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
-    
-def update_rola(db: Session, id: int, rola: int):
-    db_erabiltzaile = db.get(models.Erabiltzaileak, id)
-    if not db_erabiltzaile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
-    
-    db_erabiltzaile.id_rol = rola
-    
-    try:
-        db.commit()
-        db.refresh(db_erabiltzaile)
-        return db_erabiltzaile
-    except IntegrityError as e:
-        raise HTTPException(status_code=status.HTTP_400, detail="Errorea") from e
-    
-def list_erabiltzaile_erreserba(db: Session, id: int):
-    db_erabiltzaile = db.get(models.Erabiltzaileak, id)
-    if not db_erabiltzaile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
-
-    stmt = select(models.Erreserbak).where(models.Erreserbak.id_erab == id)
-    
-    return db.scalars(stmt).all()  
-    
-def create_takilla(db: Session, takilla: schemas.CreateTakilla):
-    db_takilla = models.Takillak(**takilla.model_dump())
-    try:
-        db.add(db_takilla)
-        db.commit()
-        db.refresh(db_takilla)
-        return db_takilla
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea sortzen") from e    
-    
-def patch_takilla(db: Session, id: int, takilla: schemas.CreateTakilla):
-    db_takilla = db.get(models.Takillak, id)
-    if not db_takilla:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da existitzen")
-    
-    for field, value in takilla.model_dump(exclude_unset=True).items():
-        setattr(db_takilla, field, value)
-    
-    try:
-        db.commit()
-        db.refresh(db_takilla)
-        return db_takilla
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
-    
-def delete_takilla(db: Session, id: int):
-    db_takilla = db.get(models.Takillak, id)
-    if not db_takilla:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da aurkitu takilla")
-    
-    try:
-        db.delete(db_takilla)
-        db.commit()
-        return { "message": "Takilla ondo ezabatu da", "id": id }
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
-    
-def post_irudia(db: Session, id_takilla: int, irudia: schemas.TakillaIrudiaCreate):
-    db_takilla = db.get(models.Takillak, id_takilla)
-    if not db_takilla:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da takilla aurkitu")
-    
-    db_irudia = models.TakillakIrudiak(id_takilla=id_takilla, url=irudia.url)
-    
-    try:
-        db.add(db_irudia)
-        db.commit()
-        db.refresh(db_irudia)
-        return db_irudia
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Errorea irudia gordetzean") from e
-    
-def patch_irudia(db: Session, id_irudi: int, irudia: schemas.TakillaIrudiaUpdate):
-    db_irudia = db.get(models.TakillakIrudiak, id_irudi)
-    if not db_irudia:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da irudia aurkitu")
-    
-    for field, value in irudia.model_dump(exclude_unset=True).items():
-        setattr(db_irudia, field, value)
-    
-    try:
-        db.commit()
-        db.refresh(db_irudia)
-        return db_irudia
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Errorea irudia eguneratzean") from e
-    
-def create_powerbank(db: Session, powerbank: schemas.CreatePowerbank):
-    db_powerbank = models.Powerbank(**powerbank.model_dump())
-    try:
-        db.add(db_powerbank)
-        db.commit()
-        db.refresh(db_powerbank)
-        return db_powerbank
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea powerbank-a sortzen") from e
-    
-def patch_powerbank_position(db: Session, id_power: int, powerbank: schemas.PowerbankTokiaPatch):
-    db_powerbank = db.get(models.Powerbank, id_power)
-    if not db_powerbank:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da powerbank-a aurkitu")
-    
-    for field, value in powerbank.model_dump(exclude_unset=True).items():
-        setattr(db_powerbank, field, value)
+# ERRESERBEN LOGIKA
+def sortu_erreserba_logika(db: Session, erreserba: ErreserbaCreate, id_erabiltzaile_aktiboa: int):
+    if erreserba.erreserba_hasiera >= erreserba.erreserba_bukaera:
+        raise HTTPException(status_code=400, detail="Hasiera data ezin da amaiera data edo geroagokoa izan.")
         
-    try:
-        db.commit()
-        db.refresh(db_powerbank)
-        return db_powerbank
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea powerbankaren tokia aldatzen") from e
+    if erreserba.erreserba_hasiera.replace(tzinfo=None) < datetime.now():
+        raise HTTPException(status_code=400, detail="Ezin da iraganeko datarako erreserbarik egin.")
+
+    postua = db.execute(select(Postuak).where(Postuak.id_postu == erreserba.id_hasiera_postua)).scalars().first()
+    if not postua or postua.egoera == 'zerbitzuz kanpo':
+        raise HTTPException(status_code=400, detail="Postu hau ez dago erabilgarri.")
+
+    gainjartzea = db.execute(
+        select(Erreserbak).where(
+            Erreserbak.id_hasiera_postua == erreserba.id_hasiera_postua,
+            Erreserbak.egoera == 'aktiboa',
+            Erreserbak.erreserba_hasiera < erreserba.erreserba_bukaera,
+            Erreserbak.erreserba_bukaera > erreserba.erreserba_hasiera
+        )
+    ).scalars().first()
+
+    if gainjartzea:
+        raise HTTPException(status_code=409, detail="Karga-postu honek erreserba bat du tarte horretan.")
+
+    nova_erreserba = Erreserbak(
+        id_erab=id_erabiltzaile_aktiboa,
+        id_power=erreserba.id_power,
+        erreserba_hasiera=erreserba.erreserba_hasiera,
+        erreserba_bukaera=erreserba.erreserba_bukaera,
+        id_hasiera_takilla=erreserba.id_hasiera_takilla,
+        id_hasiera_postua=erreserba.id_hasiera_postua,
+        egoera='aktiboa'
+    )
+    
+    db.add(nova_erreserba)
+    db.commit()
+    db.refresh(nova_erreserba)
+    return nova_erreserba
