@@ -19,8 +19,26 @@ def get_erabiltzaile_id(id: int, db: Session):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da existitzen")
     return erabiltzaile
 
+
+def delete_erabiltzaile(db: Session, id: int):
+    erabiltzaile = db.get(models.Erabiltzaileak, id)
+    if erabiltzaile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
+
+    try:
+        db.delete(erabiltzaile)
+        db.commit()
+        return {"message": "Erabiltzailea ondo ezabatu da", "id": id}
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Erabiltzailea ezin da ezabatu, erreserbak lotuta dauzka.",
+        ) from e
+
+
 def post_erabiltzaile(db: Session, erabiltzaile: schemas.CreateErabiltzaile):
-    db_erabiltzaile = models.Erabiltzaileak(**erabiltzaile.model_dump())
+    db_erabiltzaile = models.Erabiltzaileak(**erabiltzaile.model_dump(), activo=True)
     try:
         db.add(db_erabiltzaile)
         db.commit()
@@ -28,7 +46,10 @@ def post_erabiltzaile(db: Session, erabiltzaile: schemas.CreateErabiltzaile):
         return db_erabiltzaile
     except IntegrityError as e:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ezin da erabiltzailea gorde: NANa edo emaila dagoeneko erregistratuta egon daiteke, edo hautatutako rola ez da baliozkoa.",
+        ) from e
     
     
 def list_erreserbak(db: Session):

@@ -45,7 +45,7 @@ def get_erreserbak(session: DbSession):
 
 ################# POST ENDPOINTAK #################
 
-@powerbank_router.post("/erabiltzaileak/post", status_code=201, response_model=schemas.CreateErabiltzaile)
+@powerbank_router.post("/erabiltzaileak/post", status_code=201, response_model=schemas.ListErabiltzaileak)
 def create_erabiltzaile(session: DbSession, erabiltzaile: schemas.CreateErabiltzaile):
     return services.post_erabiltzaile(session, erabiltzaile)
 
@@ -95,6 +95,11 @@ def powerbank_tokia_aldatu(session: DbSession, id: int, powerbank: schemas.Power
 def delete_takilla(id, session: DbSession):
     return services.delete_takilla(session, id)
 
+
+@powerbank_router.delete("/erabiltzaileak/{id}/ezabatu", status_code=status.HTTP_200_OK)
+def delete_erabiltzaile(id: int, session: DbSession):
+    return services.delete_erabiltzaile(session, id)
+
 ###TODO, HAU ALDATU EGIN BEHAR DA MIKELEK ESKATU DUEN MODUAN EGITEKO
 @powerbank_router.post("/", response_model=schemas.ErreserbaResponse, status_code=status.HTTP_201_CREATED)
 def create_powerbank_reservation(erreserba: schemas.ErreserbaCreate, db: DbSession):
@@ -130,7 +135,5 @@ def create_powerbank_reservation(erreserba: schemas.ErreserbaCreate, db: DbSessi
     db.commit()
     db.refresh(nova)
     return nova
-
-
 
 

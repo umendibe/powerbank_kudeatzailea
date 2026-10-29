@@ -1,84 +1,166 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
-import { 
-  ColDef, 
-  ModuleRegistry, 
-  AllCommunityModule, 
+import {
+  ColDef,
+  ModuleRegistry,
+  AllCommunityModule,
   GridReadyEvent,
   SelectionChangedEvent
 } from 'ag-grid-community';
 import { HttpClient } from '@angular/common/http';
-import { map, Observable } from 'rxjs';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { ApiDeiak } from './api-deiak';
+import { ErabiltzaileCreate, ErabiltzaileResponse } from './erabiltzaile-interface';
 
-// Register AG Grid modules once
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-interface UserRow {
-  id_erab: number;
-  nan: string;
-  izena: string;
-  abizenak: string;
-  email: string;
-  pasahitza: string;
-  helbidea: string;
-  rol: number;
-}
 
 @Component({
   selector: 'app-erabiltzaileak-component',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, AgGridAngular, FormsModule, MatFormFieldModule, MatSelectModule, MatInputModule],
   templateUrl: './erabiltzaileak-component.html',
   styleUrl: './erabiltzaileak-component.css'
 })
+
+
 export class ErabiltzaileakComponent implements OnInit {
-  
+  private apiService = inject(ApiDeiak);
+
+  errepikatuPasahitza = '';
+  newUser: ErabiltzaileCreate = this.emptyUser();
+  gordetzen = signal(false);
+  gordetzeErrorea = signal<string | null>(null);
+
   constructor(private http: HttpClient) { }
-  
-  datuak = signal<UserRow[]>([]);
+
+  erabiltzaileak = signal<ErabiltzaileResponse[]>([]);
+  formulario = signal<boolean>(false);
 
   ngOnInit(): void {
-    this.lortuInfo();
+    this.lortuInfoErabiltzaileak();
   }
 
-  // getInfo(): Observable<any> {
-  //   const url = `http://localhost:8000/powerbanks`;
-  //   return this.http.get<any[]>(url).pipe(
-  //     map((res: any[])=> {
-  //       return res.map((row: any[]) => ({
-  //         id_erab: row[0],
-  //         nan: row[1],
-  //         izena: row[2],
-  //         abizenak: row[3],
-  //         email: row[4],
-  //         pasahitza: row[5],
-  //         helbidea: row[6],
-  //         rol: row[7]
-  //       }))
-  //     })
-  //   );
-  // }
+  datuBaseanGordeErabiltzailea(erabiltzaile: ErabiltzaileCreate): void {
+    this.gordetzen.set(true);
+    this.gordetzeErrorea.set(null);
 
-  getInfo(): Observable<any> {
-    const url = `http://localhost:8000/powerbanks/erabiltzaileak`;
-    return this.http.get(url);
+    this.apiService.gordeErabiltzailea(erabiltzaile).subscribe({
+      next: (res) => {
+        this.erabiltzaileak.update(list => [...list, res]);
+        this.gordetzen.set(false);
+        this.closeForm();
+      },
+      error: (err) => {
+        const msg = err?.error?.detail;
+        this.gordetzeErrorea.set(
+          typeof msg === 'string' ? msg : 'Ezin izan da erabiltzailea gorde.'
+        );
+        this.gordetzen.set(false);
+      }
+    });
   }
 
+  onSubmit(): void {
+    if (this.gordetzen()) {
+      return;
+    }
 
-  lortuInfo(): void {
-    this.getInfo().subscribe ({
-      next: (res: UserRow[]) => {
-        this.datuak.set(res);
+    if (this.newUser.pasahitza !== this.errepikatuPasahitza) {
+      this.gordetzeErrorea.set('Pasahitzak ez datoz bat.');
+      return;
+    }
+
+    this.datuBaseanGordeErabiltzailea({ ...this.newUser });
+  }
+
+  lortuInfoErabiltzaileak(): void {
+    this.apiService.getInfoErabiltzaileak().subscribe({
+      next: (res: ErabiltzaileResponse[]) => {
+        this.erabiltzaileak.set(res);
       },
       error: (err) => {
         console.error('Errorea erabiltzaileak kargatzean:', err);
       }
-    })
+    });
+  }
+
+  onEditUser(erabiltzaile: ErabiltzaileResponse): void {
+    this.openForm();
+    const aldatutakoDatuak: ErabiltzaileCreate = { ...erabiltzaile, izena: erabiltzaile.izena + ' (Eguneratuta)' };
+
+    this.apiService.editatuErabiltzaileak(erabiltzaile.id_erab, aldatutakoDatuak).subscribe({
+      next: (res: ErabiltzaileResponse) => {
+        this.erabiltzaileak.update(zerrenda =>
+          zerrenda.map(item => item.id_erab === res.id_erab ? res : item)
+        );
+      },
+      error: (err) => {
+        console.error('Errorea erabiltzailea eguneratzean:', err);
+      }
+    });
+  }
+
+  onDeleteUser(erabiltzaile: ErabiltzaileResponse): void {
+    if (confirm(`${erabiltzaile.izena} ezabatu nahi duzu?`)) {
+      this.apiService.ezabatuErabiltzailea(erabiltzaile.id_erab).subscribe({
+        next: () => {
+          this.erabiltzaileak.update(zerrenda =>
+            zerrenda.filter(item => item.id_erab !== erabiltzaile.id_erab)
+          );
+        },
+        error: (err) => {
+          console.error('Errorea erabiltzailea ezabatzean:', err);
+        }
+      });
+    }
+  }
+
+  onDesaktibatuUser(erabiltzaile: ErabiltzaileResponse): void {
+    const aldatutakoDatuak: ErabiltzaileCreate = { ...erabiltzaile, activo: false };
+
+    this.apiService.editatuErabiltzaileak(erabiltzaile.id_erab, aldatutakoDatuak).subscribe({
+      next: (res: ErabiltzaileResponse) => {
+        this.erabiltzaileak.update(zerrenda =>
+          zerrenda.map(item => item.id_erab === res.id_erab ? res : item)
+        );
+      },
+      error: (err) => {
+        console.error('Errorea erabiltzailea desaktibatzean:', err);
+      }
+    });
+  }
+
+  openForm(): void {
+    this.newUser = this.emptyUser();
+    this.errepikatuPasahitza = '';
+    this.gordetzeErrorea.set(null);
+    this.formulario.set(true);
+  }
+
+  closeForm(): void {
+    this.formulario.set(false);
+  }
+
+  private emptyUser(): ErabiltzaileCreate {
+    return {
+      nan: '',
+      izena: '',
+      abizenak: '',
+      email: '',
+      pasahitza: '',
+      helbidea: '',
+      id_rol: 2,
+      activo: true
+    };
   }
 
 
-  colDefs: ColDef<UserRow>[] = [
+  colDefs: ColDef<ErabiltzaileResponse>[] = [
     { field: 'id_erab', headerName: 'ID', width: 90, flex: 0 },
     { field: 'nan', headerName: 'NAN', filter: 'agTextColumnFilter' },
     { field: 'izena', headerName: 'IZENA' },
@@ -86,7 +168,53 @@ export class ErabiltzaileakComponent implements OnInit {
     { field: 'email', headerName: 'EMAIL' },
     { field: 'pasahitza', headerName: 'PASAHITZA' },
     { field: 'helbidea', headerName: 'HELBIDEA' },
-    { field: 'rol', headerName: 'ROL ID' }
+    { field: 'id_rol', headerName: 'ROL ID' },
+    { field: 'activo', headerName: 'AKTIBO' },
+    {
+      headerName: 'Akzioak',
+      field: 'id_erab',
+      width: 200,
+      flex: 0,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: any) => {
+        const container = document.createElement('div');
+        container.className = 'd-flex gap-2 align-items-center h-100';
+
+        const btnEdit = document.createElement('button');
+        btnEdit.className = 'btn btn-success btn-sm';
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-pencil';
+        btnEdit.appendChild(icon);
+        btnEdit.addEventListener('click', () => {
+          this.onEditUser(params.data);
+        });
+
+        const btnDelete = document.createElement('button');
+        btnDelete.className = 'btn btn-danger btn-sm';
+        const deleteIcon = document.createElement('i');
+        deleteIcon.className = 'bi bi-trash';
+        btnDelete.appendChild(deleteIcon);
+        btnDelete.addEventListener('click', () => {
+          this.onDeleteUser(params.data);
+        });
+
+        const btnDesaktibatu = document.createElement('button');
+        btnDesaktibatu.className = 'btn btn-warning btn-sm';
+        const desaktibatuIcon = document.createElement('i');
+        desaktibatuIcon.className = 'bi bi-x-circle';
+        btnDesaktibatu.appendChild(desaktibatuIcon);
+        btnDesaktibatu.addEventListener('click', () => {
+          this.onDesaktibatuUser(params.data);
+        });
+
+        container.appendChild(btnEdit);
+        container.appendChild(btnDelete);
+        container.appendChild(btnDesaktibatu);
+
+        return container;
+      }
+    }
   ];
 
   defaultColDef: ColDef = {

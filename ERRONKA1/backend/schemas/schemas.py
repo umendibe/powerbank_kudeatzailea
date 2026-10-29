@@ -20,6 +20,7 @@ class ListErabiltzaileak(BaseModel):
     pasahitza: str = Field(min_length=3)
     helbidea: str = Field(min_length=5)
     id_rol: int = Field(ge=1, le=2)
+    activo: bool = Field(default=True)
 
 # Erabiltzaile bat sortzeko (datu basean gordetzeko eskema)
 class CreateErabiltzaile(BaseModel):
@@ -39,6 +40,8 @@ class PatchErabiltzaile(BaseModel):
     pasahitza: str | None = Field(default=None,min_length=6)
     helbidea: str | None = Field(default=None,min_length=5)
     id_rol: int | None = Field(default=None,ge=1, le=2)
+    activo: bool | None = Field(default=None)
+
     
 # ERRESERBEN ESKEMAK
 
