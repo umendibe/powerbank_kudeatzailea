@@ -196,3 +196,18 @@ def patch_powerbank_position(db: Session, id_power: int, powerbank: schemas.Powe
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea powerbankaren tokia aldatzen") from e
+    
+def patch_activo(db: Session, id_erab: int, erabiltzaile: schemas.PatchErabiltzaileEgoera):
+    db_erabiltzaile = db.get(models.Erabiltzaileak, id_erab)
+    if not db_erabiltzaile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
+    
+    db_erabiltzaile.activo = erabiltzaile.activo
+    
+    try:
+        db.commit()
+        db.refresh(db_erabiltzaile)
+        return db_erabiltzaile
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Errorea erabiltzailearen egoera aldatzerakoan") from e

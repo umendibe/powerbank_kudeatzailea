@@ -204,22 +204,98 @@
             </form>
         </dialog>
         }
+
+        <table mat-table [dataSource]="dataSource" class="mat-shadow-2">
+
+            <!-- ID Erreserba -->
+            <ng-container matColumnDef="id_erreserba">
+                <th mat-header-cell *matHeaderCellDef> ID </th>
+                <td mat-cell *matCellDef="let element"> {{element.id_erreserba}}
+                </td>
+            </ng-container>
+
+            <!-- ID Erabiltzailea -->
+            <ng-container matColumnDef="id_erab">
+                <th mat-header-cell *matHeaderCellDef> ID Erab. </th>
+                <td mat-cell *matCellDef="let element"> {{element.id_erab}}
+                </td>
+            </ng-container>
+
+            <!-- ID Powerbank -->
+            <ng-container matColumnDef="id_power">
+                <th mat-header-cell *matHeaderCellDef> ID Power </th>
+                <td mat-cell *matCellDef="let element"> {{element.id_power}}
+                </td>
+            </ng-container>
+
+            <!-- Erreserba Hasiera -->
+            <ng-container matColumnDef="erreserba_hasiera">
+                <th mat-header-cell *matHeaderCellDef> Erreserba Hasiera </th>
+                <td mat-cell *matCellDef="let element">
+                    {{element.erreserba_hasiera | date:'short'}} </td>
+            </ng-container>
+
+            <!-- Erreserba Bukaera -->
+            <ng-container matColumnDef="erreserba_bukaera">
+                <th mat-header-cell *matHeaderCellDef> Erreserba Bukaera </th>
+                <td mat-cell *matCellDef="let element">
+                    {{element.erreserba_bukaera | date:'short'}} </td>
+            </ng-container>
+
+            <!-- Erabilera Hasiera -->
+            <ng-container matColumnDef="erabilera_hasiera">
+                <th mat-header-cell *matHeaderCellDef> Erabilera Hasiera </th>
+                <td mat-cell *matCellDef="let element">
+                    {{element.erabilera_hasiera ? (element.erabilera_hasiera |
+                    date:'short') : '-'}} </td>
+            </ng-container>
+
+            <!-- Erabilera Bukaera -->
+            <ng-container matColumnDef="erabilera_bukaera">
+                <th mat-header-cell *matHeaderCellDef> Erabilera Bukaera </th>
+                <td mat-cell *matCellDef="let element">
+                    {{element.erabilera_bukaera ? (element.erabilera_bukaera |
+                    date:'short') : '-'}} </td>
+            </ng-container>
+
+            <!-- Hasiera Takilla -->
+            <ng-container matColumnDef="id_hasiera_takilla">
+                <th mat-header-cell *matHeaderCellDef> Hasiera Takilla </th>
+                <td mat-cell *matCellDef="let element">
+                    {{element.id_hasiera_takilla}} </td>
+            </ng-container>
+
+            <!-- Bukaera Takilla -->
+            <ng-container matColumnDef="id_bukaera_takilla">
+                <th mat-header-cell *matHeaderCellDef> Bukaera Takilla </th>
+                <td mat-cell *matCellDef="let element">
+                    {{element.id_bukaera_takilla ?? '-'}} </td>
+            </ng-container>
+
+            <!-- Hasiera Postua -->
+            <ng-container matColumnDef="id_hasiera_postua">
+                <th mat-header-cell *matHeaderCellDef> Hasiera Postua </th>
+                <td mat-cell *matCellDef="let element">
+                    {{element.id_hasiera_postua}} </td>
+            </ng-container>
+
+            <!-- Bukaera Postua -->
+            <ng-container matColumnDef="id_bukaera_postua">
+                <th mat-header-cell *matHeaderCellDef> Bukaera Postua </th>
+                <td mat-cell *matCellDef="let element">
+                    {{element.id_bukaera_postua ?? '-'}} </td>
+            </ng-container>
+
+            <!-- Egoera -->
+            <ng-container matColumnDef="egoera">
+                <th mat-header-cell *matHeaderCellDef> Egoera </th>
+                <td mat-cell *matCellDef="let element"> {{element.egoera}} </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+
     </div>
 
-    <h1 class="text-center mt-5 mb-3">Erabiltzaileen rolen kudeaketa</h1>
-    <div class="container-fluid mt-3">
-        <div class="row">
-            <div class="col-12 col-md-6 col-lg-4 ms-3 ms-md-4">
-                <mat-form-field class="w-100" appearance="fill">
-                    <mat-label>Erabiltzaileen rolak kudeatu</mat-label>
-                    <mat-select>
-                        @for (item of erabiltzaileak(); track item) {
-                        <mat-option
-                            [value]="item.id_erab">{{item.izena}}</mat-option>
-                        }
-                    </mat-select>
-                </mat-form-field>
-            </div>
-        </div>
-    </div>
 </body>

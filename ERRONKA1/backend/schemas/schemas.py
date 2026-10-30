@@ -41,6 +41,9 @@ class PatchErabiltzaile(BaseModel):
     helbidea: str | None = Field(default=None,min_length=5)
     id_rol: int | None = Field(default=None,ge=1, le=2)
     activo: bool | None = Field(default=None)
+    
+class PatchErabiltzaileEgoera(BaseModel):
+    activo: bool
 
     
 # ERRESERBEN ESKEMAK

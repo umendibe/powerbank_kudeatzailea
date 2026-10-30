@@ -89,6 +89,12 @@ def pathc_irudia(session: DbSession, id: int, irudia: schemas.TakillaIrudiaCreat
 def powerbank_tokia_aldatu(session: DbSession, id: int, powerbank: schemas.PowerbankTokiaPatch):
     return services.patch_powerbank_position(session, id, powerbank)
 
+
+@powerbank_router.put("/erabiltzaileak/{id}/egoera", status_code=status.HTTP_200_OK, response_model=schemas.PatchErabiltzaile)
+def egoera_aldatu(session: DbSession, id: int, erabiltzaile: schemas.PatchErabiltzaileEgoera):
+    return services.patch_activo(session, id, erabiltzaile)
+
+
 ################# DELETE ENDPOINTAK #################
 
 @powerbank_router.delete("/takillak/{id}/delete", status_code=status.HTTP_200_OK)

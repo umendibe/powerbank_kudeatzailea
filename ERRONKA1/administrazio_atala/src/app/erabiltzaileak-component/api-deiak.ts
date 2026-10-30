@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ErabiltzaileCreate, ErabiltzaileResponse } from './erabiltzaile-interface';
+import { ErabiltzaileCreate, ErabiltzaileResponse, ListErreserbak, PatchErabiltzaile } from './erabiltzaile-interface';
 
 @Injectable({
     providedIn: 'root'
@@ -9,30 +9,37 @@ import { ErabiltzaileCreate, ErabiltzaileResponse } from './erabiltzaile-interfa
 
 export class ApiDeiak {
 
+    host: string = "localhost:8000";
+
     constructor(private http: HttpClient) { }
 
     getInfoErabiltzaileak(): Observable<ErabiltzaileResponse[]> {
-        const url = `http://localhost:8000/alokaziosistema/erabiltzaileak`;
+        const url = `http://${this.host}/alokaziosistema/erabiltzaileak`;
         return this.http.get<ErabiltzaileResponse[]>(url);
     }
 
     editatuErabiltzaileak(id: number, erabiltzaile: ErabiltzaileCreate): Observable<ErabiltzaileResponse> {
-        const url = `http://localhost:8000/alokaziosistema/erabiltzaileak/${id}/eguneratu`;
+        const url = `http://${this.host}/alokaziosistema/erabiltzaileak/${id}/eguneratu`;
         return this.http.put<ErabiltzaileResponse>(url, erabiltzaile);
     }
 
     ezabatuErabiltzailea(id: number): Observable<void> {
-        const url = `http://localhost:8000/alokaziosistema/erabiltzaileak/${id}/ezabatu`;
+        const url = `http://${this.host}/alokaziosistema/erabiltzaileak/${id}/ezabatu`;
         return this.http.delete<void>(url);
     }
 
     gordeErabiltzailea(erabiltzaile: ErabiltzaileCreate): Observable<ErabiltzaileResponse> {
-        const url = `http://localhost:8000/alokaziosistema/erabiltzaileak/post`;
+        const url = `http://${this.host}/alokaziosistema/erabiltzaileak/post`;
         return this.http.post<ErabiltzaileResponse>(url, erabiltzaile);
     }
 
-    desaktibatuErabiltzailea(id: number): Observable<ErabiltzaileResponse> {
-        const url = `http://localhost:8000/alokaziosistema/erabiltzaileak/${id}/desaktibatu`;
-        return this.http.put<ErabiltzaileResponse>(url, {});
+    erabiltzaileEgoera(id: number, erabiltzailea: PatchErabiltzaile): Observable<ErabiltzaileResponse> {
+        const url = `http://${this.host}/alokaziosistema/erabiltzaileak/${id}/egoera`;
+        return this.http.put<ErabiltzaileResponse>(url, erabiltzailea);
+    }
+
+    erreserbakListatu(id: number): Observable<ListErreserbak[]> {
+        const url = `http://${this.host}/alokaziosistema/erabiltzaileak/${id}/erreserbak`;
+        return this.http.get<ListErreserbak[]>(url);
     }
 }
