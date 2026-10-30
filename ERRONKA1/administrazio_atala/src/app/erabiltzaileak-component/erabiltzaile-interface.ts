@@ -10,6 +10,16 @@ export interface ErabiltzaileResponse {
   activo: boolean;
 }
 
+export interface ErabiltzaileEdit {
+  nan: string;
+  izena: string;
+  abizenak: string;
+  email: string;
+  helbidea: string;
+  id_rol: number;
+  activo: boolean;
+}
+
 export interface ErabiltzaileCreate {
   nan: string;
   izena: string;

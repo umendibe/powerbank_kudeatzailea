@@ -3,13 +3,12 @@
         <h2 class="text-center mt-5 mb-5">ERABILTZAILEEN ZERRENDA</h2>
 
         <!-- AG Grid Component -->
-        <div class=" w-80 d-flex justify-content-center mb-5">
+        <div class="w-80 d-flex justify-content-center mb-5">
             <button type="button" class="btn btn-success"
                 (click)="openForm()">Sortu</button>
         </div>
 
         <div class="d-flex justify-content-center w-100">
-
             <ag-grid-angular
                 style="width: 80%; height: 400px;"
                 [rowData]="erabiltzaileak()"
@@ -17,9 +16,7 @@
                 [defaultColDef]="defaultColDef"
                 [pagination]="pagination"
                 [paginationPageSize]="paginationPageSize"
-                [paginationPageSizeSelector]="paginationPageSizeSelector"
-                (gridReady)="onGridReady($event)"
-                (selectionChanged)="onSelectionChanged($event)">
+                [paginationPageSizeSelector]="paginationPageSizeSelector">
             </ag-grid-angular>
         </div>
 
@@ -27,13 +24,15 @@
         <div class="modal-backdrop fade show"></div>
         <dialog open class="modal-dialog-custom card p-4 shadow-lg">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="m-0">Erabiltzaile berria</h5>
+                <h5 class="m-0">{{ editingUserId() ? 'Erabiltzailea editatu' :
+                    'Erabiltzaile berria' }}</h5>
                 <button type="button" class="btn-close"
                     (click)="closeForm()"></button>
             </div>
 
-            <form #userForm="ngForm"
-                (ngSubmit)="userForm.form.valid && onSubmit()">
+            <form #userForm="ngForm" (ngSubmit)="onSubmit()">
+
+                <!-- NAN -->
                 <div class="mb-3">
                     <label for="nan" class="form-label">NAN:</label>
                     <input
@@ -144,6 +143,8 @@
                     }
                 </div>
 
+                <!-- BAKARRIK ESKATUKO DIRA ERABILTZAILE BERRI BAT SORTZEAN -->
+                @if (!editingUserId()) {
                 <!-- PASAHITZA -->
                 <div class="mb-3">
                     <label for="pasahitza" class="form-label">Pasahitza:</label>
@@ -185,6 +186,7 @@
                         bat</div>
                     }
                 </div>
+                }
 
                 @if (gordetzeErrorea()) {
                 <div class="alert alert-danger" role="alert">{{
@@ -197,105 +199,206 @@
                     <button
                         type="submit"
                         class="btn btn-primary"
-                        [disabled]="userForm.invalid || newUser.pasahitza !== errepikatuPasahitza || gordetzen()">
-                        {{ gordetzen() ? 'Gordetzen...' : 'Gorde' }}
+                        [disabled]="gordetzen() || (!editingUserId() && userForm.invalid)">
+                        {{ gordetzen() ? 'Gordetzen...' : (editingUserId() ?
+                        'Aldaketak gorde' : 'Gorde') }}
                     </button>
                 </div>
             </form>
         </dialog>
         }
 
-        <table mat-table [dataSource]="dataSource" class="mat-shadow-2">
+        <!-- ERRESERBEN TAULA -->
+        @if (erreserbaTaula()) {
+        <div class="container my-4">
+            <div class="row justify-content-center">
+                <div class="col-12 col-xl-10">
 
-            <!-- ID Erreserba -->
-            <ng-container matColumnDef="id_erreserba">
-                <th mat-header-cell *matHeaderCellDef> ID </th>
-                <td mat-cell *matCellDef="let element"> {{element.id_erreserba}}
-                </td>
-            </ng-container>
+                    <div class="table-responsive shadow-sm rounded border">
+                        <table mat-table [dataSource]="dataSource"
+                            class="table table-hover align-middle mb-0">
 
-            <!-- ID Erabiltzailea -->
-            <ng-container matColumnDef="id_erab">
-                <th mat-header-cell *matHeaderCellDef> ID Erab. </th>
-                <td mat-cell *matCellDef="let element"> {{element.id_erab}}
-                </td>
-            </ng-container>
+                            <!-- ID Erreserba -->
+                            <ng-container matColumnDef="id_erreserba">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary"> ID
+                                </th>
+                                <td mat-cell *matCellDef="let element"
+                                    class="fw-bold"> {{element.id_erreserba}}
+                                </td>
+                            </ng-container>
 
-            <!-- ID Powerbank -->
-            <ng-container matColumnDef="id_power">
-                <th mat-header-cell *matHeaderCellDef> ID Power </th>
-                <td mat-cell *matCellDef="let element"> {{element.id_power}}
-                </td>
-            </ng-container>
+                            <!-- ID Erabiltzailea -->
+                            <ng-container matColumnDef="id_erab">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary"> ID
+                                    Erab. </th>
+                                <td mat-cell *matCellDef="let element">
+                                    {{element.id_erab}} </td>
+                            </ng-container>
 
-            <!-- Erreserba Hasiera -->
-            <ng-container matColumnDef="erreserba_hasiera">
-                <th mat-header-cell *matHeaderCellDef> Erreserba Hasiera </th>
-                <td mat-cell *matCellDef="let element">
-                    {{element.erreserba_hasiera | date:'short'}} </td>
-            </ng-container>
+                            <!-- ID Powerbank -->
+                            <ng-container matColumnDef="id_power">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary"> ID
+                                    Power </th>
+                                <td mat-cell *matCellDef="let element">
+                                    <span
+                                        class="badge bg-secondary-subtle text-secondary border">
+                                        <i
+                                            class="bi bi-battery-charging me-1"></i>{{element.id_power}}
+                                    </span>
+                                </td>
+                            </ng-container>
 
-            <!-- Erreserba Bukaera -->
-            <ng-container matColumnDef="erreserba_bukaera">
-                <th mat-header-cell *matHeaderCellDef> Erreserba Bukaera </th>
-                <td mat-cell *matCellDef="let element">
-                    {{element.erreserba_bukaera | date:'short'}} </td>
-            </ng-container>
+                            <!-- Erreserba Hasiera -->
+                            <ng-container matColumnDef="erreserba_hasiera">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary">
+                                    Erreserba Hasiera </th>
+                                <td mat-cell *matCellDef="let element"
+                                    class="text-nowrap">
+                                    <i
+                                        class="bi bi-calendar-event text-muted me-1"></i>{{element.erreserba_hasiera
+                                    | date:'yyyy-MM-dd HH:mm'}}
+                                </td>
+                            </ng-container>
 
-            <!-- Erabilera Hasiera -->
-            <ng-container matColumnDef="erabilera_hasiera">
-                <th mat-header-cell *matHeaderCellDef> Erabilera Hasiera </th>
-                <td mat-cell *matCellDef="let element">
-                    {{element.erabilera_hasiera ? (element.erabilera_hasiera |
-                    date:'short') : '-'}} </td>
-            </ng-container>
+                            <!-- Erreserba Bukaera -->
+                            <ng-container matColumnDef="erreserba_bukaera">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary">
+                                    Erreserba Bukaera </th>
+                                <td mat-cell *matCellDef="let element"
+                                    class="text-nowrap">
+                                    <i
+                                        class="bi bi-calendar-check text-muted me-1"></i>{{element.erreserba_bukaera
+                                    | date:'yyyy-MM-dd HH:mm'}}
+                                </td>
+                            </ng-container>
 
-            <!-- Erabilera Bukaera -->
-            <ng-container matColumnDef="erabilera_bukaera">
-                <th mat-header-cell *matHeaderCellDef> Erabilera Bukaera </th>
-                <td mat-cell *matCellDef="let element">
-                    {{element.erabilera_bukaera ? (element.erabilera_bukaera |
-                    date:'short') : '-'}} </td>
-            </ng-container>
+                            <!-- Erabilera Hasiera -->
+                            <ng-container matColumnDef="erabilera_hasiera">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary">
+                                    Erabilera Hasiera </th>
+                                <td mat-cell *matCellDef="let element"
+                                    class="text-nowrap">
+                                    @if (element.erabilera_hasiera) {
+                                    {{element.erabilera_hasiera |
+                                    date:'yyyy-MM-dd HH:mm'}}
+                                    } @else {
+                                    <span class="text-muted">-</span>
+                                    }
+                                </td>
+                            </ng-container>
 
-            <!-- Hasiera Takilla -->
-            <ng-container matColumnDef="id_hasiera_takilla">
-                <th mat-header-cell *matHeaderCellDef> Hasiera Takilla </th>
-                <td mat-cell *matCellDef="let element">
-                    {{element.id_hasiera_takilla}} </td>
-            </ng-container>
+                            <!-- Erabilera Bukaera -->
+                            <ng-container matColumnDef="erabilera_bukaera">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary">
+                                    Erabilera Bukaera </th>
+                                <td mat-cell *matCellDef="let element"
+                                    class="text-nowrap">
+                                    @if (element.erabilera_bukaera) {
+                                    {{element.erabilera_bukaera |
+                                    date:'yyyy-MM-dd HH:mm'}}
+                                    } @else {
+                                    <span class="text-muted">-</span>
+                                    }
+                                </td>
+                            </ng-container>
 
-            <!-- Bukaera Takilla -->
-            <ng-container matColumnDef="id_bukaera_takilla">
-                <th mat-header-cell *matHeaderCellDef> Bukaera Takilla </th>
-                <td mat-cell *matCellDef="let element">
-                    {{element.id_bukaera_takilla ?? '-'}} </td>
-            </ng-container>
+                            <!-- Hasiera Takilla -->
+                            <ng-container matColumnDef="id_hasiera_takilla">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary">
+                                    Hasiera Takilla </th>
+                                <td mat-cell *matCellDef="let element">
+                                    {{element.id_hasiera_takilla}} </td>
+                            </ng-container>
 
-            <!-- Hasiera Postua -->
-            <ng-container matColumnDef="id_hasiera_postua">
-                <th mat-header-cell *matHeaderCellDef> Hasiera Postua </th>
-                <td mat-cell *matCellDef="let element">
-                    {{element.id_hasiera_postua}} </td>
-            </ng-container>
+                            <!-- Bukaera Takilla -->
+                            <ng-container matColumnDef="id_bukaera_takilla">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary">
+                                    Bukaera Takilla </th>
+                                <td mat-cell *matCellDef="let element">
+                                    {{element.id_bukaera_takilla ?? '-'}} </td>
+                            </ng-container>
 
-            <!-- Bukaera Postua -->
-            <ng-container matColumnDef="id_bukaera_postua">
-                <th mat-header-cell *matHeaderCellDef> Bukaera Postua </th>
-                <td mat-cell *matCellDef="let element">
-                    {{element.id_bukaera_postua ?? '-'}} </td>
-            </ng-container>
+                            <!-- Hasiera Postua -->
+                            <ng-container matColumnDef="id_hasiera_postua">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary">
+                                    Hasiera Postua </th>
+                                <td mat-cell *matCellDef="let element">
+                                    {{element.id_hasiera_postua}} </td>
+                            </ng-container>
 
-            <!-- Egoera -->
-            <ng-container matColumnDef="egoera">
-                <th mat-header-cell *matHeaderCellDef> Egoera </th>
-                <td mat-cell *matCellDef="let element"> {{element.egoera}} </td>
-            </ng-container>
+                            <!-- Bukaera Postua -->
+                            <ng-container matColumnDef="id_bukaera_postua">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary">
+                                    Bukaera Postua </th>
+                                <td mat-cell *matCellDef="let element">
+                                    {{element.id_bukaera_postua ?? '-'}} </td>
+                            </ng-container>
 
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-        </table>
+                            <!-- Egoera -->
+                            <ng-container matColumnDef="egoera">
+                                <th mat-header-cell *matHeaderCellDef
+                                    class="bg-light fw-bold text-secondary">
+                                    Egoera </th>
+                                <td mat-cell *matCellDef="let element">
+                                    @switch (element.egoera) {
+                                    @case ('aktiboa') {
+                                    <span
+                                        class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                                        <i
+                                            class="bi bi-check-circle-fill me-1"></i>aktiboa
+                                    </span>
+                                    }
+                                    @case ('amaituta') {
+                                    <span
+                                        class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1">
+                                        <i
+                                            class="bi bi-clock-history me-1"></i>amaituta
+                                    </span>
+                                    }
+                                    @case ('ezeztatuta') {
+                                    <span
+                                        class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">
+                                        <i
+                                            class="bi bi-x-circle-fill me-1"></i>bertan
+                                        behera
+                                    </span>
+                                    }
+                                    @default {
+                                    <span
+                                        class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1">
+                                        {{element.egoera}}
+                                    </span>
+                                    }
+                                    }
+                                </td>
+                            </ng-container>
+
+                            <tr mat-header-row
+                                *matHeaderRowDef="displayedColumns"></tr>
+                            <tr mat-row
+                                *matRowDef="let row; columns: displayedColumns;"></tr>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        @if (erreserbak().length === 0) {
+        <p class="text-center mt-3 fw-bold">EZ DITU ERRESERBARIK</p>
+        }
+        }
 
     </div>
-
 </body>

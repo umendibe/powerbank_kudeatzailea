@@ -50,18 +50,22 @@ class PatchErabiltzaileEgoera(BaseModel):
 
 # Erreserbak listatzeko
 class ListErreserbak(BaseModel):
-    id: int
+    id_erreserba: int
     id_erab: int
     id_power: int
-    erreserba_hasiera: str = Field(min_length=6)
-    erreserba_bukaera: str = Field(min_lenght=6)
-    erabilera_hasiera: str = Field(min_lenght=6)
-    erabilera_bukaera: str = Field(min_lenght=6)
-    id_hasiera_takilla: int = Field(min_lenght=6)
-    id_bukaera_takilla: int = Field(min_lenght=6)
-    id_hasiera_postua: int = Field(min_lenght=6)
-    id_bukaera_postua: int = Field(min_lenght=6)
+    erreserba_hasiera: datetime 
+    erreserba_bukaera: datetime 
+    erabilera_hasiera: datetime | None = None
+    erabilera_bukaera: datetime | None = None
+    id_hasiera_takilla: int  
+    id_bukaera_takilla: int | None = None
+    id_hasiera_postua: int 
+    id_bukaera_postua: int | None = None
     egoera: str = Field(max_lenght=20)
+
+    
+    class Config:
+        from_attributes = True
     
 # Erabiltzaile batek erreserba bat sortzeko (datu basean gordetzeko)
 class CreateErreserba(BaseModel):

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ErabiltzaileCreate, ErabiltzaileResponse, ListErreserbak, PatchErabiltzaile } from './erabiltzaile-interface';
+import { ErabiltzaileCreate, ErabiltzaileResponse, ListErreserbak, PatchErabiltzaile, ErabiltzaileEdit } from './erabiltzaile-interface';
 
 @Injectable({
     providedIn: 'root'
@@ -18,9 +18,14 @@ export class ApiDeiak {
         return this.http.get<ErabiltzaileResponse[]>(url);
     }
 
-    editatuErabiltzaileak(id: number, erabiltzaile: ErabiltzaileCreate): Observable<ErabiltzaileResponse> {
+    getInfoErabiltzaileakId(id: number): Observable<ErabiltzaileResponse> {
+        const url = `http://${this.host}/alokaziosistema/erabiltzaileak/${id}`;
+        return this.http.get<ErabiltzaileResponse>(url);
+    }
+
+    editatuErabiltzaileak(id: number, erabiltzaile: ErabiltzaileEdit): Observable<ErabiltzaileResponse> {
         const url = `http://${this.host}/alokaziosistema/erabiltzaileak/${id}/eguneratu`;
-        return this.http.put<ErabiltzaileResponse>(url, erabiltzaile);
+        return this.http.patch<ErabiltzaileResponse>(url, erabiltzaile);
     }
 
     ezabatuErabiltzailea(id: number): Observable<void> {

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, Signal } from '@angular/core';
+import { Component, OnInit, signal, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
@@ -9,12 +9,12 @@ import {
   GridReadyEvent,
   SelectionChangedEvent
 } from 'ag-grid-community';
-import {MatTableModule} from '@angular/material/table';
+import { MatTableModule } from '@angular/material/table';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { ApiDeiak } from './api-deiak';
-import { ErabiltzaileCreate, ErabiltzaileResponse, ListErreserbak, PatchErabiltzaile } from './erabiltzaile-interface';
+import { ErabiltzaileCreate, ErabiltzaileEdit, ErabiltzaileResponse, ListErreserbak, PatchErabiltzaile } from './erabiltzaile-interface';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -25,76 +25,112 @@ ModuleRegistry.registerModules([AllCommunityModule]);
   templateUrl: './erabiltzaileak-component.html',
   styleUrl: './erabiltzaileak-component.css'
 })
-  
-
 export class ErabiltzaileakComponent implements OnInit {
   private apiService = inject(ApiDeiak);
+  private cdr = inject(ChangeDetectorRef);
 
   errepikatuPasahitza = '';
   newUser: ErabiltzaileCreate = this.emptyUser();
+  editingUserId = signal<number | null>(null);
+
   gordetzen = signal(false);
   gordetzeErrorea = signal<string | null>(null);
-
+  erabiltzaileBakarra = signal<ErabiltzaileResponse | null>(null);
   erabiltzaileak = signal<ErabiltzaileResponse[]>([]);
-  erreserbak = signal<ListErreserbak[]>([])
+  erreserbak = signal<ListErreserbak[]>([]);
   formulario = signal<boolean>(false);
+  erreserbaTaula = signal<boolean>(false);
 
   displayedColumns: string[] = ['id_erreserba', 'id_erab', 'id_power', 'erreserba_hasiera', 'erreserba_bukaera', 'erabilera_hasiera', 'erabilera_bukaera', 'id_hasiera_takilla', 'id_bukaera_takilla', 'id_hasiera_postua', 'id_bukaera_postua', 'egoera'];
-  dataSource = this.erreserbak();
+  dataSource: ListErreserbak[] = [];
 
   ngOnInit(): void {
     this.lortuInfoErabiltzaileak();
   }
 
-  datuBaseanGordeErabiltzailea(erabiltzaile: ErabiltzaileCreate): void {
-    this.gordetzen.set(true);
+  onEditUser(erabiltzaile: ErabiltzaileResponse): void {
+    this.editingUserId.set(erabiltzaile.id_erab);
+    this.newUser = {
+      nan: erabiltzaile.nan,
+      izena: erabiltzaile.izena,
+      abizenak: erabiltzaile.abizenak,
+      email: erabiltzaile.email,
+      pasahitza: '', // No requerida al editar
+      helbidea: erabiltzaile.helbidea,
+      id_rol: erabiltzaile.id_rol,
+      activo: erabiltzaile.activo
+    };
+    this.errepikatuPasahitza = '';
     this.gordetzeErrorea.set(null);
-
-    this.apiService.gordeErabiltzailea(erabiltzaile).subscribe({
-      next: (res) => {
-        this.erabiltzaileak.update(list => [...list, res]);
-        this.gordetzen.set(false);
-        this.closeForm();
-      },
-      error: (err) => {
-        const msg = err?.error?.detail;
-        this.gordetzeErrorea.set(
-          typeof msg === 'string' ? msg : 'Ezin izan da erabiltzailea gorde.'
-        );
-        this.gordetzen.set(false);
-      }
-    });
+    this.formulario.set(true);
   }
 
   onSubmit(): void {
-    if (this.gordetzen()) {
-      return;
+    if (this.gordetzen()) return;
+
+    const erab_id = this.editingUserId();
+
+    if (!erab_id) {
+      if (!this.newUser.pasahitza) {
+        this.gordetzeErrorea.set('Pasahitza ezin da hutsik egon.');
+        return;
+      }
+      if (this.newUser.pasahitza !== this.errepikatuPasahitza) {
+        this.gordetzeErrorea.set('Pasahitzak ez datoz bat.');
+        return;
+      }
     }
 
-    if (this.newUser.pasahitza !== this.errepikatuPasahitza) {
-      this.gordetzeErrorea.set('Pasahitzak ez datoz bat.');
-      return;
-    }
+    this.gordetzen.set(true);
+    this.gordetzeErrorea.set(null);
 
-    this.datuBaseanGordeErabiltzailea({ ...this.newUser });
+    if (erab_id !== null) {
+      const editData: ErabiltzaileEdit = {
+        nan: this.newUser.nan,
+        izena: this.newUser.izena,
+        abizenak: this.newUser.abizenak,
+        email: this.newUser.email,
+        helbidea: this.newUser.helbidea,
+        id_rol: this.newUser.id_rol,
+        activo: this.newUser.activo
+      };
+
+      this.apiService.editatuErabiltzaileak(erab_id, editData).subscribe({
+        next: (res: ErabiltzaileResponse) => {
+          this.erabiltzaileak.update(zerrenda =>
+            zerrenda.map(item => item.id_erab === res.id_erab ? res : item)
+          );
+          this.gordetzen.set(false);
+          this.closeForm();
+        },
+        error: (err) => console.log(err)
+      });
+    } else {
+      this.apiService.gordeErabiltzailea(this.newUser).subscribe({
+        next: (res: ErabiltzaileResponse) => {
+          this.erabiltzaileak.update(list => [...list, res]);
+          this.gordetzen.set(false);
+          this.closeForm();
+        },
+        error: (err) => console.log(err)
+      });
+    }
   }
 
-  lortuInfoErabiltzaileak(): void {
-    this.apiService.getInfoErabiltzaileak().subscribe({
-      next: (res: ErabiltzaileResponse[]) => {
-        this.erabiltzaileak.set(res);
-        console.log(this.erabiltzaileak())
+  listErreserbakUser(id_erab: number): void {
+    this.apiService.erreserbakListatu(id_erab).subscribe({
+      next: (res: ListErreserbak[]) => {
+        this.erreserbak.set(res);
+        this.dataSource = res;
+        this.erreserbaTaula.set(true);
+        this.cdr.detectChanges();
       },
-      error: (err) => {
-        console.error('Errorea erabiltzaileak kargatzean:', err);
-      }
+      error: (err) => console.error("Errorea erreserbak kargatzean: ", err)
     });
   }
 
   onEgoeraAldatu(erabiltzaile: ErabiltzaileResponse): void {
-    const aldatutakoDatuak: PatchErabiltzaile = {
-      activo: !erabiltzaile.activo
-    };
+    const aldatutakoDatuak: PatchErabiltzaile = { activo: !erabiltzaile.activo };
 
     this.apiService.erabiltzaileEgoera(erabiltzaile.id_erab, aldatutakoDatuak).subscribe({
       next: (res: ErabiltzaileResponse) => {
@@ -102,38 +138,15 @@ export class ErabiltzaileakComponent implements OnInit {
           zerrenda.map(item => item.id_erab === res.id_erab ? res : item)
         );
       },
-      error: (err) => {
-        console.error('Errorea erabiltzailearen egoera aldatzean:', err);
-      }
+      error: (err) => console.error('Errorea erabiltzailearen egoera aldatzean:', err)
     });
   }
 
-  onEditUser(erabiltzaile: ErabiltzaileResponse): void {
-    this.openForm();
-    const aldatutakoDatuak: ErabiltzaileCreate = { ...erabiltzaile, izena: erabiltzaile.izena + ' (Eguneratuta)' };
-
-    this.apiService.editatuErabiltzaileak(erabiltzaile.id_erab, aldatutakoDatuak).subscribe({
-      next: (res: ErabiltzaileResponse) => {
-        this.erabiltzaileak.update(zerrenda =>
-          zerrenda.map(item => item.id_erab === res.id_erab ? res : item)
-        );
-      },
-      error: (err) => {
-        console.error('Errorea erabiltzailea eguneratzean:', err);
-      }
+  lortuInfoErabiltzaileak(): void {
+    this.apiService.getInfoErabiltzaileak().subscribe({
+      next: (res: ErabiltzaileResponse[]) => this.erabiltzaileak.set(res),
+      error: (err) => console.error('Errorea erabiltzaileak kargatzean:', err)
     });
-  }
-
-  listErreserbakUser(id_erab: number): void {
-    this.apiService.erreserbakListatu(id_erab).subscribe({
-      next: (res: ListErreserbak[]) => {
-        this.erreserbak.set(res)
-        console.log(this.erreserbak())
-      },
-      error: (err) => {
-        console.log("Errorea: ", err)
-      }
-    })
   }
 
   onDeleteUser(erabiltzaile: ErabiltzaileResponse): void {
@@ -144,14 +157,13 @@ export class ErabiltzaileakComponent implements OnInit {
             zerrenda.filter(item => item.id_erab !== erabiltzaile.id_erab)
           );
         },
-        error: (err) => {
-          console.error('Errorea erabiltzailea ezabatzean:', err);
-        }
+        error: (err) => console.error('Errorea erabiltzailea ezabatzean:', err)
       });
     }
   }
 
   openForm(): void {
+    this.editingUserId.set(null);
     this.newUser = this.emptyUser();
     this.errepikatuPasahitza = '';
     this.gordetzeErrorea.set(null);
@@ -160,6 +172,7 @@ export class ErabiltzaileakComponent implements OnInit {
 
   closeForm(): void {
     this.formulario.set(false);
+    this.editingUserId.set(null);
   }
 
   private emptyUser(): ErabiltzaileCreate {
@@ -174,7 +187,6 @@ export class ErabiltzaileakComponent implements OnInit {
       activo: true
     };
   }
-
 
   colDefs: ColDef<ErabiltzaileResponse>[] = [
     { field: 'id_erab', headerName: 'ID', width: 90, flex: 0 },
@@ -199,41 +211,23 @@ export class ErabiltzaileakComponent implements OnInit {
 
         const btnEdit = document.createElement('button');
         btnEdit.className = 'btn btn-success btn-sm';
-        const icon = document.createElement('i');
-        icon.className = 'bi bi-pencil';
-        btnEdit.appendChild(icon);
-        btnEdit.addEventListener('click', () => {
-          this.onEditUser(params.data);
-          window.location.reload()
-        });
+        btnEdit.innerHTML = '<i class="bi bi-pencil"></i>';
+        btnEdit.addEventListener('click', () => this.onEditUser(params.data));
 
         const btnDelete = document.createElement('button');
         btnDelete.className = 'btn btn-danger btn-sm';
-        const deleteIcon = document.createElement('i');
-        deleteIcon.className = 'bi bi-trash';
-        btnDelete.appendChild(deleteIcon);
-        btnDelete.addEventListener('click', () => {
-          this.onDeleteUser(params.data);
-        });
+        btnDelete.innerHTML = '<i class="bi bi-trash"></i>';
+        btnDelete.addEventListener('click', () => this.onDeleteUser(params.data));
 
         const btnDesaktibatu = document.createElement('button');
         btnDesaktibatu.className = 'btn btn-warning btn-sm';
-        const desaktibatuIcon = document.createElement('i');
-        desaktibatuIcon.className = 'bi bi-x-circle';
-        btnDesaktibatu.appendChild(desaktibatuIcon);
-        btnDesaktibatu.addEventListener('click', () => {
-          this.onEgoeraAldatu(params.data);
-          window.location.reload()
-        });
+        btnDesaktibatu.innerHTML = '<i class="bi bi-x-circle"></i>';
+        btnDesaktibatu.addEventListener('click', () => this.onEgoeraAldatu(params.data));
 
         const btnErreserba = document.createElement('button');
         btnErreserba.className = 'btn btn-primary btn-sm';
-        const erreserbaIcon = document.createElement('i');
-        desaktibatuIcon.className = 'bi bi-list';
-        btnErreserba.appendChild(erreserbaIcon);
-        btnErreserba.addEventListener('click', () => {
-          this.listErreserbakUser(params.data.id_erab);
-        });
+        btnErreserba.innerHTML = '<i class="bi bi-list"></i>';
+        btnErreserba.addEventListener('click', () => this.listErreserbakUser(params.data.id_erab));
 
         container.appendChild(btnEdit);
         container.appendChild(btnDelete);
@@ -255,13 +249,4 @@ export class ErabiltzaileakComponent implements OnInit {
   pagination = true;
   paginationPageSize = 5;
   paginationPageSizeSelector: number[] | boolean = [5, 10, 20];
-
-  onGridReady(params: GridReadyEvent): void {
-    console.log('AG Grid is ready');
-  }
-
-  onSelectionChanged(event: SelectionChangedEvent): void {
-    const selectedRows = event.api.getSelectedRows();
-    console.log('Selected rows:', selectedRows);
-  }
 }
