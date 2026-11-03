@@ -47,6 +47,10 @@ def get_erreserbak(session: DbSession):
     return services.list_erreserbak(session)
 
 
+@powerbank_router.post("/login", status_code=status.HTTP_200_OK)
+def login(datuak: schemas.ErabiltzaileLogin, db: DbSession):
+    return services.login(db, datuak.email, datuak.pasahitza)
+
 ################# POST ENDPOINTAK #################
 
 @powerbank_router.post("/erabiltzaileak/post", status_code=201, response_model=schemas.ListErabiltzaileak)

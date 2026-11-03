@@ -5,6 +5,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+
 def get_all_erabiltzaileak(db: Session):
     try:
         stmt = select(models.Erabiltzaileak).order_by(models.Erabiltzaileak.id_erab)
@@ -399,3 +400,22 @@ def patch_activo(db: Session, id_erab: int, erabiltzaile: schemas.PatchErabiltza
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Errorea erabiltzailearen egoera aldatzerakoan") from e
+    
+    
+def login(db: Session, email: str, password: str):
+    stmt = select(models.Erabiltzaileak).where(
+        models.Erabiltzaileak.email == email,
+        models.Erabiltzaileak.pasahitza == password
+    )
+    
+    db_erabiltzaile = db.scalars(stmt).first()
+    
+    if not db_erabiltzaile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Ez da erabiltzailea aurkitu edo pasahitza okerra da"
+        )
+        
+    return db_erabiltzaile.id_rol
+    
+    

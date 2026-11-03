@@ -9,6 +9,10 @@ from pydantic import BaseModel, ConfigDict, Field
 class ErabiltzaileLogin(BaseModel):
     email: str
     pasahitza: str
+    
+class LoginResponse(BaseModel):
+    email: str
+    id_rol: str
 
 
 # Erabiltzaileak zerrendatzeko (taula, zerrenda bat...)
