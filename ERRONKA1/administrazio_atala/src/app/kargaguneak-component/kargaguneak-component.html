@@ -1,0 +1,157 @@
+<div class="grid-container">
+    <h2 class="text-center mt-5 mb-5">KARGAGUNEEN ZERRENDA</h2>
+
+    <div class="d-flex justify-content-center mb-5">
+        <button type="button" class="btn btn-success" (click)="sortuBerria()">
+            Kargagune berria
+        </button>
+    </div>
+
+    @if (taulaErrorea()) {
+    <div class="alert alert-danger mx-auto w-80" role="alert">{{ taulaErrorea() }}</div>
+    }
+
+    <div class="d-flex justify-content-center w-100">
+        <ag-grid-angular
+            class="kargagune-grid"
+            [rowData]="takillak()"
+            [columnDefs]="colDefs"
+            [defaultColDef]="defaultColDef"
+            [pagination]="pagination"
+            [paginationPageSize]="paginationPageSize"
+            [paginationPageSizeSelector]="paginationPageSizeSelector">
+        </ag-grid-angular>
+    </div>
+</div>
+
+@if (formularioa()) {
+<div class="modal-backdrop fade show"></div>
+<dialog open class="modal-dialog-custom card p-4 shadow-lg"
+    aria-labelledby="takilla-form-title">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 id="takilla-form-title" class="m-0">
+            {{ editatzenDenId() !== null ? 'Kargagunea aldatu' : 'Kargagune berria' }}
+        </h5>
+        <button type="button" class="btn-close" aria-label="Itxi"
+            [disabled]="formularioaGordetzen()" (click)="itxiFormularioa()"></button>
+    </div>
+
+    <form #takillaForm="ngForm" (ngSubmit)="gordeTakilla()">
+        <div class="mb-3">
+            <label for="izena" class="form-label">Izena:</label>
+            <input id="izena" name="izena" class="form-control"
+                [(ngModel)]="takillaDatuak.izena" #izena="ngModel"
+                required minlength="2" maxlength="100" />
+            @if (izena.invalid && (izena.dirty || izena.touched)) {
+            <div class="form-text text-danger">Izenak gutxienez 2 karaktere izan behar ditu.</div>
+            }
+        </div>
+
+        <div class="mb-3">
+            <label for="helbidea" class="form-label">Helbidea:</label>
+            <input id="helbidea" name="helbidea" class="form-control"
+                [(ngModel)]="takillaDatuak.helbidea" #helbidea="ngModel"
+                required minlength="3" maxlength="200" />
+            @if (helbidea.invalid && (helbidea.dirty || helbidea.touched)) {
+            <div class="form-text text-danger">Helbidea behar bezala bete.</div>
+            }
+        </div>
+
+        <div class="mb-3">
+            <label for="egoera" class="form-label">Egoera:</label>
+            <select id="egoera" name="egoera" class="form-select"
+                [(ngModel)]="takillaDatuak.egoera" required>
+                @for (option of egoeraAukerak; track option.value) {
+                <option [ngValue]="option.value">{{ option.label }}</option>
+                }
+            </select>
+        </div>
+
+        @if (formularioErrorea()) {
+        <div class="alert alert-danger" role="alert">{{ formularioErrorea() }}</div>
+        }
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="button" class="btn btn-secondary"
+                [disabled]="formularioaGordetzen()" (click)="itxiFormularioa()">Utzi</button>
+            <button type="submit" class="btn btn-primary"
+                [disabled]="takillaForm.invalid || formularioaGordetzen()">
+                {{ formularioaGordetzen() ? 'Gordetzen...' : 'Gorde' }}
+            </button>
+        </div>
+    </form>
+</dialog>
+}
+
+@if (ezabatzekoTakilla(); as takilla) {
+<div class="modal-backdrop fade show"></div>
+<dialog open class="modal-dialog-custom card p-4 shadow-lg"
+    aria-labelledby="takilla-delete-title">
+    <h5 id="takilla-delete-title" class="mb-3">Kargagunea ezabatu</h5>
+    <p>{{ takilla.izena }} kargagunea eta bere hutsik dauden postuak ezabatu nahi dituzu?</p>
+    @if (ezabaketaErrorea()) {
+    <div class="alert alert-danger" role="alert">{{ ezabaketaErrorea() }}</div>
+    }
+    <div class="d-flex justify-content-end gap-2 mt-3">
+        <button type="button" class="btn btn-secondary" [disabled]="takillaEzabatzen()"
+            (click)="itxiEzabaketa()">Utzi</button>
+        <button type="button" class="btn btn-danger" [disabled]="takillaEzabatzen()"
+            (click)="berretsiEzabaketa()">
+            {{ takillaEzabatzen() ? 'Ezabatzen...' : 'Ezabatu' }}
+        </button>
+    </div>
+</dialog>
+}
+
+@if (aukeratutakoTakillaPostuak(); as takilla) {
+<div class="modal-backdrop fade show"></div>
+<dialog open class="modal-dialog-custom modal-dialog-wide card p-4 shadow-lg"
+    aria-labelledby="takilla-slots-title">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 id="takilla-slots-title" class="m-0">{{ takilla.izena }}: postuak</h5>
+        <button type="button" class="btn-close" aria-label="Itxi" (click)="itxiPostuak()"></button>
+    </div>
+
+    @if (postuenErrorea()) {
+    <div class="alert alert-danger" role="alert">{{ postuenErrorea() }}</div>
+    }
+
+    <div class="d-flex justify-content-end mb-3">
+        <button type="button" class="btn btn-success" [disabled]="postuaGehitzen()"
+            (click)="postuaGehitu()">
+            {{ postuaGehitzen() ? 'Gehitzen...' : 'Postua gehitu' }}
+        </button>
+    </div>
+
+    @if (postuakKargatzen()) {
+    <p class="text-center">Postuak kargatzen...</p>
+    } @else if (postuakTakillan().length === 0) {
+    <p class="text-center text-muted">Ez dago posturik kargagune honetan.</p>
+    } @else {
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr><th>ID</th><th>EGOERA</th><th>AKZIOAK</th></tr>
+            </thead>
+            <tbody>
+                @for (postu of postuakTakillan(); track postu.id_postu) {
+                <tr>
+                    <td>{{ postu.id_postu }}</td>
+                    <td>{{ postu.egoera }}</td>
+                    <td>
+                        <button type="button" class="btn btn-danger btn-sm"
+                            [disabled]="postu.egoera !== 'hutsa' || postuaEzabatzenId() !== null"
+                            [title]="postu.egoera !== 'hutsa' ? 'Postua hutsik egon behar da' : 'Postua ezabatu'"
+                            (click)="postuaEzabatu(postu)">
+                            <i class="bi bi-trash"></i>
+                            @if (postuaEzabatzenId() === postu.id_postu) { Ezabatzen... }
+                        </button>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    }
+</dialog>
+}

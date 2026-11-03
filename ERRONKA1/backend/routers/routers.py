@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 DbSession = Annotated[Session, Depends(database.get_session)]
 
-
 powerbank_router = APIRouter(prefix="/alokaziosistema", tags=["POWERBANKS"])
 
 ################# GET ENDPOINTAK #################
@@ -60,9 +59,24 @@ def post_takilla(session: DbSession, takilla: schemas.CreateTakilla):
     return services.create_takilla(session, takilla)
 
 
-@powerbank_router.post("/takillak/{id}/postIrudia", status_code=201, response_model=schemas.TakillaIrudiaCreate)
-def post_irudia(session: DbSession, id: int, irudia: schemas.TakillaIrudiaCreate):
-    return services.post_irudia(session, id, irudia)
+@powerbank_router.get("/takillak", response_model=list[schemas.TakillaResponse])
+def get_takillak(session: DbSession):
+    return services.get_all_takillak(session)
+
+
+@powerbank_router.get("/takillak/{id}/postuak", response_model=list[schemas.PostuResponse])
+def get_postuak_takillan(id: int, session: DbSession):
+    return services.get_postuak_takillan(session, id)
+
+
+@powerbank_router.post("/takillak/{id}/postuak", status_code=201, response_model=schemas.PostuResponse)
+def postu_berria(id: int, session: DbSession):
+    return services.create_postua(session, id)
+
+
+@powerbank_router.delete("/postuak/{id}/delete", status_code=status.HTTP_200_OK)
+def delete_postua(id: int, session: DbSession):
+    return services.delete_postua(session, id)
 
 
 @powerbank_router.post("/powerbanks/post", status_code=201, response_model=schemas.ListPowerbank)
@@ -85,11 +99,6 @@ def update_takilla(id: int, takilla: schemas.PatchTakilla, session: DbSession):
     return services.patch_takilla(session, id, takilla)
 
 
-@powerbank_router.patch("/takillak/{id}/aldatuIrudia", status_code=200, response_model=schemas.TakillaIrudiaCreate)
-def pathc_irudia(session: DbSession, id: int, irudia: schemas.TakillaIrudiaCreate):
-    return services.patch_irudia(session, id, irudia)
-
-
 @powerbank_router.patch("/powerbanks/{id}/aldatuTokia", status_code=status.HTTP_200_OK, response_model=schemas.ListPowerbank)
 def powerbank_tokia_aldatu(session: DbSession, id: int, powerbank: schemas.PowerbankTokiaPatch):
     return services.patch_powerbank_position(session, id, powerbank)
@@ -103,7 +112,7 @@ def egoera_aldatu(session: DbSession, id: int, erabiltzaile: schemas.PatchErabil
 ################# DELETE ENDPOINTAK #################
 
 @powerbank_router.delete("/takillak/{id}/delete", status_code=status.HTTP_200_OK)
-def delete_takilla(id, session: DbSession):
+def delete_takilla(id: int, session: DbSession):
     return services.delete_takilla(session, id)
 
 

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -134,18 +135,24 @@ class ErreserbaResponse(ErreserbaCreate):
 class CreateTakilla(BaseModel):
     izena: str = Field(min_length=2, max_length=100)
     helbidea: str = Field(min_length=3, max_length=200)
-    egoera: str = Field(max_length=20)
+    egoera: Literal["erabilgarri", "mantentze_lanetan", "zerbitzuz_kanpo"]
     
 class PatchTakilla(BaseModel):
     izena: str | None = Field(default=None, min_length=2, max_length=100)
     helbidea: str | None = Field(default=None,min_length=3, max_length=200)
-    egoera: str | None = Field(default=None,max_length=20)
+    egoera: Literal["erabilgarri", "mantentze_lanetan", "zerbitzuz_kanpo"] | None = None
     
 class TakillaResponse(BaseModel):
     id_takilla: int
     izena: str = Field(min_length=2, max_length=100)
     helbidea: str = Field(min_length=3, max_length=200)
     egoera: str = Field(max_length=20)
-    
-class TakillaIrudiaCreate(BaseModel):
-    url: str = Field(max_length=500)
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PostuResponse(BaseModel):
+    id_postu: int
+    id_takilla: int
+    egoera: str
+
+    model_config = ConfigDict(from_attributes=True)

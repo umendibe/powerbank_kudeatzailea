@@ -1,10 +1,9 @@
 from fastapi import HTTPException, status
 from models import models
 from schemas import schemas
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-
 
 def get_all_erabiltzaileak(db: Session):
     try:
@@ -117,7 +116,9 @@ def list_erabiltzaile_erreserba(db: Session, id: int):
     return db.scalars(stmt).all()  
     
 def create_takilla(db: Session, takilla: schemas.CreateTakilla):
-    db_takilla = models.Takillak(**takilla.model_dump())
+    takilla_data = takilla.model_dump()
+    takilla_data["egoera"] = models.TakillakEgoeraEnum(takilla_data["egoera"])
+    db_takilla = models.Takillak(**takilla_data)
     try:
         db.add(db_takilla)
         db.commit()
@@ -127,12 +128,21 @@ def create_takilla(db: Session, takilla: schemas.CreateTakilla):
         db.rollback()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea sortzen") from e    
     
-def patch_takilla(db: Session, id: int, takilla: schemas.CreateTakilla):
+def get_all_takillak(db: Session):
+    try:
+        stmt = select(models.Takillak).order_by(models.Takillak.id_takilla)
+        return db.scalars(stmt).all()
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Errorea takillak ekartzen") from e
+
+def patch_takilla(db: Session, id: int, takilla: schemas.PatchTakilla):
     db_takilla = db.get(models.Takillak, id)
     if not db_takilla:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da existitzen")
     
     for field, value in takilla.model_dump(exclude_unset=True).items():
+        if field == "egoera" and value is not None:
+            value = models.TakillakEgoeraEnum(value)
         setattr(db_takilla, field, value)
     
     try:
@@ -142,51 +152,129 @@ def patch_takilla(db: Session, id: int, takilla: schemas.CreateTakilla):
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
+
+def get_postuak_takillan(db: Session, id_takilla: int):
+    if not db.get(models.Takillak, id_takilla):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da takilla aurkitu")
+    stmt = (
+        select(models.Postuak)
+        .where(models.Postuak.id_takilla == id_takilla)
+        .order_by(models.Postuak.id_postu)
+    )
+    return db.scalars(stmt).all()
+
+def create_postua(db: Session, id_takilla: int):
+    if not db.get(models.Takillak, id_takilla):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da takilla aurkitu")
+    db_postu = models.Postuak(
+        id_takilla=id_takilla,
+        egoera=models.PostuakEgoeraEnum.hutsa,
+    )
+    try:
+        db.add(db_postu)
+        db.commit()
+        db.refresh(db_postu)
+        return db_postu
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Errorea postua sortzen") from e
+
+def delete_postua(db: Session, id_postu: int):
+    db_postu = db.get(models.Postuak, id_postu)
+    if not db_postu:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da postua aurkitu")
+    if db_postu.egoera != models.PostuakEgoeraEnum.hutsa:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ezin da okupatuta dagoen postua ezabatu")
+
+    try:
+        db.delete(db_postu)
+        db.commit()
+        return {"message": "Postua ondo ezabatu da", "id": id_postu}
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Postua ezin da ezabatu, erreserba bati lotuta dagoelako",
+        ) from e
     
 def delete_takilla(db: Session, id: int):
-    db_takilla = db.get(models.Takillak, id)
+    db_takilla = db.scalars(
+        select(models.Takillak)
+        .where(models.Takillak.id_takilla == id)
+        .with_for_update()
+    ).first()
     if not db_takilla:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da aurkitu takilla")
     
+    postuak = db.scalars(
+        select(models.Postuak)
+        .where(models.Postuak.id_takilla == id)
+        .with_for_update()
+    ).all()
+    postu_ids = [postua.id_postu for postua in postuak]
+
+    powerbank_conditions = [models.Powerbank.id_takilla == id]
+    if postu_ids:
+        powerbank_conditions.append(models.Powerbank.id_postu.in_(postu_ids))
+    if db.scalars(
+        select(models.Powerbank.id_power)
+        .where(or_(*powerbank_conditions))
+        .limit(1)
+    ).first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Takilla ezin da ezabatu: powerbank bat edo gehiago ditu. Kendu edo mugitu powerbankak lehenik.",
+        )
+    if any(postua.egoera != models.PostuakEgoeraEnum.hutsa for postua in postuak):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Takilla ezin da ezabatu: postu okupatuak edo erabilgarriak ez diren postuak ditu.",
+        )
+
+    reservation_conditions = [
+        models.Erreserbak.id_hasiera_takilla == id,
+        models.Erreserbak.id_bukaera_takilla == id,
+    ]
+    if postu_ids:
+        reservation_conditions.extend(
+            [
+                models.Erreserbak.id_hasiera_postua.in_(postu_ids),
+                models.Erreserbak.id_bukaera_postua.in_(postu_ids),
+            ]
+        )
+    if db.scalars(
+        select(models.Erreserbak.id_erreserba)
+        .where(or_(*reservation_conditions))
+        .limit(1)
+    ).first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Takilla ezin da ezabatu: erreserba-historian agertzen da.",
+        )
+
     try:
+        image_rows = db.scalars(
+            select(models.TakillakIrudiak).where(models.TakillakIrudiak.id_takilla == id)
+        ).all()
+        for image_row in image_rows:
+            db.delete(image_row)
+        for postua in postuak:
+            db.delete(postua)
         db.delete(db_takilla)
         db.commit()
-        return { "message": "Takilla ondo ezabatu da", "id": id }
+        return {"message": "Takilla ondo ezabatu da", "id": id}
     except IntegrityError as e:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
-    
-def post_irudia(db: Session, id_takilla: int, irudia: schemas.TakillaIrudiaCreate):
-    db_takilla = db.get(models.Takillak, id_takilla)
-    if not db_takilla:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da takilla aurkitu")
-    
-    db_irudia = models.TakillakIrudiak(id_takilla=id_takilla, url=irudia.url)
-    
-    try:
-        db.add(db_irudia)
-        db.commit()
-        db.refresh(db_irudia)
-        return db_irudia
-    except IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Takilla ezin da ezabatu, datu lotuak dituelako.",
+        ) from e
+    except SQLAlchemyError as e:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Errorea irudia gordetzean") from e
-    
-def patch_irudia(db: Session, id_irudi: int, irudia: schemas.TakillaIrudiaUpdate):
-    db_irudia = db.get(models.TakillakIrudiak, id_irudi)
-    if not db_irudia:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da irudia aurkitu")
-    
-    for field, value in irudia.model_dump(exclude_unset=True).items():
-        setattr(db_irudia, field, value)
-    
-    try:
-        db.commit()
-        db.refresh(db_irudia)
-        return db_irudia
-    except IntegrityError as e:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Errorea irudia eguneratzean") from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errorea takilla ezabatzen.",
+        ) from e
     
 def create_powerbank(db: Session, powerbank: schemas.CreatePowerbank):
     db_postu = db.scalars(
