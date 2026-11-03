@@ -222,7 +222,10 @@ export class ErabiltzaileakComponent implements OnInit {
         const btnDesaktibatu = document.createElement('button');
         btnDesaktibatu.className = 'btn btn-warning btn-sm';
         btnDesaktibatu.innerHTML = '<i class="bi bi-x-circle"></i>';
-        btnDesaktibatu.addEventListener('click', () => this.onEgoeraAldatu(params.data));
+        btnDesaktibatu.addEventListener('click', () => {
+          this.onEgoeraAldatu(params.data);
+          window.location.reload();
+        }); 
 
         const btnErreserba = document.createElement('button');
         btnErreserba.className = 'btn btn-primary btn-sm';
