@@ -52,12 +52,20 @@ class TakillakIrudiak(Base):
     id_takilla: Mapped[int] = mapped_column(ForeignKey("takillak.id_takilla"), nullable=False)
     url: Mapped[str] = mapped_column(String(500), nullable=False)
     
+class PostuakEgoeraEnum(str, enum.Enum):
+    hutsa = "hutsa"
+    kargatuta = "kargatuta"
+    kargatzen = "kargatzen"
+
 class Postuak(Base):
     __tablename__ = "postuak"
     
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    id_postu: Mapped[int] = mapped_column(ForeignKey("takillak.id_takilla"), nullable=False)
-    egoera: Mapped[str] = mapped_column(String(50), nullable=False)
+    id_postu: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id_takilla: Mapped[int] = mapped_column(ForeignKey("takillak.id_takilla"), nullable=False)
+    egoera: Mapped["PostuakEgoeraEnum"] = mapped_column(
+        Enum(PostuakEgoeraEnum, name="egoera_postuak", create_type=False),
+        nullable=False,
+    )
     
 class Powerbank(Base):
     __tablename__ = "powerbank"

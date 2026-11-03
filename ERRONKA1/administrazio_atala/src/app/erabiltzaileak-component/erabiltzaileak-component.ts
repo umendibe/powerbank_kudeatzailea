@@ -6,8 +6,6 @@ import {
   ColDef,
   ModuleRegistry,
   AllCommunityModule,
-  GridReadyEvent,
-  SelectionChangedEvent
 } from 'ag-grid-community';
 import { MatTableModule } from '@angular/material/table';
 import { MatInputModule } from '@angular/material/input';
@@ -40,6 +38,9 @@ export class ErabiltzaileakComponent implements OnInit {
   erreserbak = signal<ListErreserbak[]>([]);
   formulario = signal<boolean>(false);
   erreserbaTaula = signal<boolean>(false);
+  erabiltzaileaEzabatzeko = signal<ErabiltzaileResponse | null>(null);
+  erabiltzaileaEzabatzen = signal(false);
+  ezabatzekoErrorea = signal<string | null>(null);
 
   displayedColumns: string[] = ['id_erreserba', 'id_erab', 'id_power', 'erreserba_hasiera', 'erreserba_bukaera', 'erabilera_hasiera', 'erabilera_bukaera', 'id_hasiera_takilla', 'id_bukaera_takilla', 'id_hasiera_postua', 'id_bukaera_postua', 'egoera'];
   dataSource: ListErreserbak[] = [];
@@ -150,16 +151,39 @@ export class ErabiltzaileakComponent implements OnInit {
   }
 
   onDeleteUser(erabiltzaile: ErabiltzaileResponse): void {
-    if (confirm(`${erabiltzaile.izena} ezabatu nahi duzu?`)) {
-      this.apiService.ezabatuErabiltzailea(erabiltzaile.id_erab).subscribe({
-        next: () => {
-          this.erabiltzaileak.update(zerrenda =>
-            zerrenda.filter(item => item.id_erab !== erabiltzaile.id_erab)
-          );
-        },
-        error: (err) => console.error('Errorea erabiltzailea ezabatzean:', err)
-      });
-    }
+    this.ezabatzekoErrorea.set(null);
+    this.erabiltzaileaEzabatzeko.set(erabiltzaile);
+  }
+
+  itxiEzabatzekoDialogoa(): void {
+    if (this.erabiltzaileaEzabatzen()) return;
+    this.erabiltzaileaEzabatzeko.set(null);
+    this.ezabatzekoErrorea.set(null);
+  }
+
+  berretsiErabiltzaileEzabaketa(): void {
+    const erabiltzaile = this.erabiltzaileaEzabatzeko();
+    if (!erabiltzaile || this.erabiltzaileaEzabatzen()) return;
+
+    this.erabiltzaileaEzabatzen.set(true);
+    this.ezabatzekoErrorea.set(null);
+    this.apiService.ezabatuErabiltzailea(erabiltzaile.id_erab).subscribe({
+      next: () => {
+        this.erabiltzaileak.update(zerrenda =>
+          zerrenda.filter(item => item.id_erab !== erabiltzaile.id_erab)
+        );
+        this.erabiltzaileaEzabatzen.set(false);
+        this.erabiltzaileaEzabatzeko.set(null);
+      },
+      error: (err) => {
+        console.error('Errorea erabiltzailea ezabatzean:', err);
+        const detail = err.error?.detail;
+        this.ezabatzekoErrorea.set(
+          typeof detail === 'string' ? detail : 'Ezin izan da erabiltzailea ezabatu.'
+        );
+        this.erabiltzaileaEzabatzen.set(false);
+      }
+    });
   }
 
   openForm(): void {

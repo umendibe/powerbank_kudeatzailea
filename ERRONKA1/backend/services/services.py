@@ -12,6 +12,24 @@ def get_all_erabiltzaileak(db: Session):
         return db.scalars(stmt).all()
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail="Errorea erabiltzaileak ekartzen") from e
+    
+def get_all_powerbanks(db: Session):
+    try:
+        stmt = select(models.Powerbank).order_by(models.Powerbank.id_power)
+        return db.scalars(stmt).all()
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail="Errorea erabiltzaileak ekartzen") from e
+
+def get_available_postuak(db: Session):
+    try:
+        stmt = (
+            select(models.Postuak)
+            .where(models.Postuak.egoera == models.PostuakEgoeraEnum.hutsa)
+            .order_by(models.Postuak.id_takilla, models.Postuak.id_postu)
+        )
+        return db.scalars(stmt).all()
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail="Errorea postu erabilgarriak ekartzen") from e
 
 def get_erabiltzaile_id(id: int, db: Session):
     erabiltzaile = db.get(models.Erabiltzaileak, id,)
@@ -171,8 +189,21 @@ def patch_irudia(db: Session, id_irudi: int, irudia: schemas.TakillaIrudiaUpdate
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Errorea irudia eguneratzean") from e
     
 def create_powerbank(db: Session, powerbank: schemas.CreatePowerbank):
+    db_postu = db.scalars(
+        select(models.Postuak)
+        .where(models.Postuak.id_postu == powerbank.id_postu)
+        .with_for_update()
+    ).first()
+    if not db_postu:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aukeratutako postua ez da aurkitu")
+    if db_postu.id_takilla != powerbank.id_takilla:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Postua ez dagokio aukeratutako takillari")
+    if db_postu.egoera != models.PostuakEgoeraEnum.hutsa:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Aukeratutako postua ez dago hutsik")
+
     db_powerbank = models.Powerbank(**powerbank.model_dump())
     try:
+        db_postu.egoera = models.PostuakEgoeraEnum.kargatuta
         db.add(db_powerbank)
         db.commit()
         db.refresh(db_powerbank)
@@ -185,17 +216,86 @@ def patch_powerbank_position(db: Session, id_power: int, powerbank: schemas.Powe
     db_powerbank = db.get(models.Powerbank, id_power)
     if not db_powerbank:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da powerbank-a aurkitu")
-    
-    for field, value in powerbank.model_dump(exclude_unset=True).items():
-        setattr(db_powerbank, field, value)
-        
+
+    update_data = powerbank.model_dump(exclude_unset=True)
+    old_postu_id = db_powerbank.id_postu
+    new_postu_id = update_data.get("id_postu", old_postu_id)
+
     try:
+        if new_postu_id != old_postu_id:
+            postuak = db.scalars(
+                select(models.Postuak)
+                .where(models.Postuak.id_postu.in_([old_postu_id, new_postu_id]))
+                .with_for_update()
+            ).all()
+            postuak_by_id = {postu.id_postu: postu for postu in postuak}
+            old_postu = postuak_by_id.get(old_postu_id)
+            new_postu = postuak_by_id.get(new_postu_id)
+
+            if not old_postu:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Powerbank-aren uneko postua ez da aurkitu",
+                )
+            if not new_postu:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Aukeratutako postua ez da aurkitu",
+                )
+            if new_postu.egoera != models.PostuakEgoeraEnum.hutsa:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Aukeratutako postua ez dago erabilgarri",
+                )
+
+            old_postu.egoera = models.PostuakEgoeraEnum.hutsa
+            new_postu.egoera = models.PostuakEgoeraEnum.kargatuta
+
+        for field, value in update_data.items():
+            setattr(db_powerbank, field, value)
+
         db.commit()
         db.refresh(db_powerbank)
         return db_powerbank
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea powerbankaren tokia aldatzen") from e
+
+def delete_powerbank(db: Session, id_power: int):
+    db_powerbank = db.get(models.Powerbank, id_power)
+    if not db_powerbank:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da powerbank-a aurkitu")
+
+    postu = db.scalars(
+        select(models.Postuak)
+        .where(models.Postuak.id_postu == db_powerbank.id_postu)
+        .with_for_update()
+    ).first()
+    if not postu:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Powerbank-aren postua ez da aurkitu",
+        )
+
+    try:
+        erreserbak = db.scalars(
+            select(models.Erreserbak)
+            .where(models.Erreserbak.id_power == id_power)
+            .with_for_update()
+        ).all()
+        for erreserba in erreserbak:
+            db.delete(erreserba)
+
+        postu.egoera = models.PostuakEgoeraEnum.hutsa
+        db.delete(db_powerbank)
+        db.commit()
+        return {"message": "Powerbank-a ondo ezabatu da", "id": id_power}
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Powerbank-a ezin da ezabatu, hari lotutako erreserbak daudelako.",
+        ) from e
     
 def patch_activo(db: Session, id_erab: int, erabiltzaile: schemas.PatchErabiltzaileEgoera):
     db_erabiltzaile = db.get(models.Erabiltzaileak, id_erab)

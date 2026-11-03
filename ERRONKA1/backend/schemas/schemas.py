@@ -89,11 +89,19 @@ class ListPowerbank(BaseModel):
     id_takilla: int
     id_postu: int
     karga: int = Field(ge=0, le= 100)
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PostuDisponible(BaseModel):
+    id_postu: int
+    id_takilla: int
+
+    model_config = ConfigDict(from_attributes=True)
     
 # Powerbank sortzeko 
 class CreatePowerbank(BaseModel):
-    id_takilla: int
     id_postu: int
+    id_takilla: int
     karga: int = Field(ge=0, le= 100)
     
 class PowerbankTokiaPatch(BaseModel):
@@ -141,4 +149,3 @@ class TakillaResponse(BaseModel):
     
 class TakillaIrudiaCreate(BaseModel):
     url: str = Field(max_length=500)
-

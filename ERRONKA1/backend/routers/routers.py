@@ -27,9 +27,14 @@ def get_by_id(id: int, session: DbSession):
 
 
 # Powerbank guztiak lortu
-@powerbank_router.get("/powerbanks", response_model=list[schemas.ErreserbaResponse])
+@powerbank_router.get("/powerbanks", response_model=list[schemas.ListPowerbank])
 def read_powerbanks(session: DbSession):
-    return services.list_erreserbak(session)
+    return services.get_all_powerbanks(session)
+
+
+@powerbank_router.get("/postuak/erabilgarriak", response_model=list[schemas.PostuDisponible])
+def read_available_postuak(session: DbSession):
+    return services.get_available_postuak(session)
 
 
 # Erabiltzaile baten erreserba guztiak lortu
@@ -60,7 +65,7 @@ def post_irudia(session: DbSession, id: int, irudia: schemas.TakillaIrudiaCreate
     return services.post_irudia(session, id, irudia)
 
 
-@powerbank_router.post("/powerbanks/post", status_code=201, response_model=schemas.CreatePowerbank)
+@powerbank_router.post("/powerbanks/post", status_code=201, response_model=schemas.ListPowerbank)
 def create_powerbank(session: DbSession, powerbank: schemas.CreatePowerbank):
     return services.create_powerbank(session, powerbank)
 
@@ -106,6 +111,11 @@ def delete_takilla(id, session: DbSession):
 def delete_erabiltzaile(id: int, session: DbSession):
     return services.delete_erabiltzaile(session, id)
 
+
+@powerbank_router.delete("/powerbanks/{id}/ezabatu", status_code=status.HTTP_200_OK)
+def delete_powerbank(id: int, session: DbSession):
+    return services.delete_powerbank(session, id)
+
 ###TODO, HAU ALDATU EGIN BEHAR DA MIKELEK ESKATU DUEN MODUAN EGITEKO
 @powerbank_router.post("/", response_model=schemas.ErreserbaResponse, status_code=status.HTTP_201_CREATED)
 def create_powerbank_reservation(erreserba: schemas.ErreserbaCreate, db: DbSession):
@@ -141,5 +151,3 @@ def create_powerbank_reservation(erreserba: schemas.ErreserbaCreate, db: DbSessi
     db.commit()
     db.refresh(nova)
     return nova
-
-
