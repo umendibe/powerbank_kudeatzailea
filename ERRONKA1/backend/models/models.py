@@ -74,7 +74,12 @@ class Powerbank(Base):
     id_postu: Mapped[int] = mapped_column(ForeignKey("postuak.id_postu"), nullable=False, unique=True)
     id_takilla: Mapped[int] = mapped_column(ForeignKey("takillak.id_takilla"), nullable=False)
     karga: Mapped[int] = mapped_column(Integer, CheckConstraint("karga >= 0 AND karga <= 100")) 
-    
+
+class ErreserbaEgoeraEnum(str, enum.Enum):
+    aktiboa = "aktiboa"
+    ezeztatuta = "ezeztatuta"
+    amaituta = "amaituta"
+
 class Erreserbak(Base):
     __tablename__ = "erreserbak"
     
@@ -89,4 +94,7 @@ class Erreserbak(Base):
     id_bukaera_takilla: Mapped[int] = mapped_column(ForeignKey("takillak.id_takilla"), nullable=True)
     id_hasiera_postua: Mapped[int] = mapped_column(ForeignKey("postuak.id_postu"), nullable=False)
     id_bukaera_postua: Mapped[int] = mapped_column(ForeignKey("postuak.id_postu"), nullable=True)
-    egoera: Mapped[str] = mapped_column(String(50), nullable=False)
+    egoera: Mapped["ErreserbaEgoeraEnum"] = mapped_column(
+        Enum(ErreserbaEgoeraEnum, name="egoera_erreserba", create_type=False),
+        nullable=False,
+    )

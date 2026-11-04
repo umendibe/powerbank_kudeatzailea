@@ -1,0 +1,219 @@
+<div class="container-fluid px-4 pb-5">
+  <h2 class="text-center mt-5 mb-4">ERRESERBEN KUDEAKETA</h2>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-6 col-xl-3">
+          <label for="filterErabiltzaile" class="form-label">Erabiltzailea</label>
+          <select
+            id="filterErabiltzaile"
+            class="form-select"
+            [ngModel]="filterErabiltzaile()"
+            (ngModelChange)="filterErabiltzaile.set($event)">
+            <option [ngValue]="null">Erabiltzaile guztiak</option>
+            @for (erabiltzaile of erabiltzaileAukerak(); track erabiltzaile.id_erab) {
+              <option [ngValue]="erabiltzaile.id_erab">
+                {{ erabiltzaile.izena }} {{ erabiltzaile.abizenak }} (#{{ erabiltzaile.id_erab }})
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+          <label for="filterKargagune" class="form-label">Kargagunea</label>
+          <select
+            id="filterKargagune"
+            class="form-select"
+            [ngModel]="filterKargagune()"
+            (ngModelChange)="filterKargagune.set($event)">
+            <option [ngValue]="null">Kargagune guztiak</option>
+            @for (kargagune of kargaguneAukerak(); track kargagune.id_takilla) {
+              <option [ngValue]="kargagune.id_takilla">
+                #{{ kargagune.id_takilla }} - {{ kargagune.izena }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+          <label for="filterPowerbank" class="form-label">Powerbank-a</label>
+          <select
+            id="filterPowerbank"
+            class="form-select"
+            [ngModel]="filterPowerbank()"
+            (ngModelChange)="filterPowerbank.set($event)">
+            <option [ngValue]="null">Powerbank guztiak</option>
+            @for (powerbank of powerbankAukerak(); track powerbank.id_power) {
+              <option [ngValue]="powerbank.id_power">
+                #{{ powerbank.id_power }} ({{ powerbank.karga }}%)
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+          <label for="filterEgoera" class="form-label">Egoera</label>
+          <select
+            id="filterEgoera"
+            class="form-select"
+            [ngModel]="filterEgoera()"
+            (ngModelChange)="filterEgoera.set($event)">
+            <option [ngValue]="''">Egoera guztiak</option>
+            @for (egoera of egoeraAukerak; track egoera.value) {
+              <option [ngValue]="egoera.value">{{ egoera.label }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+          <label for="filterDataHasiera" class="form-label">Hasiera data (noiztik)</label>
+          <input
+            id="filterDataHasiera"
+            type="date"
+            class="form-control"
+            [ngModel]="filterDataHasiera()"
+            (ngModelChange)="filterDataHasiera.set($event)" />
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+          <label for="filterDataBukaera" class="form-label">Bukaera data (noiz arte)</label>
+          <input
+            id="filterDataBukaera"
+            type="date"
+            class="form-control"
+            [ngModel]="filterDataBukaera()"
+            (ngModelChange)="filterDataBukaera.set($event)" />
+        </div>
+
+        <div class="col-md-6 col-xl-6 d-flex justify-content-end align-items-end">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            [disabled]="!iragazkiakAktibo()"
+            (click)="garbituIragazkiak()">
+            <i class="bi bi-x-lg me-1"></i>
+            Iragazkiak garbitu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if (taulaErrorea()) {
+    <div class="alert alert-danger" role="alert">{{ taulaErrorea() }}</div>
+  }
+
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <span class="text-muted">
+      {{ filteredErreserbak().length }} / {{ erreserbak().length }} erreserba
+    </span>
+    <button type="button" class="btn btn-outline-primary btn-sm" (click)="kargatuErreserbak()">
+      <i class="bi bi-arrow-clockwise me-1"></i>
+      Berritu
+    </button>
+  </div>
+
+  @if (kargatzen()) {
+    <p class="text-center py-4">Erreserbak kargatzen...</p>
+  } @else if (filteredErreserbak().length === 0) {
+    <div class="alert alert-info text-center" role="status">
+      Ez dago erreserbarik iragazki hauekin.
+    </div>
+  } @else {
+    <div class="d-flex justify-content-center w-100">
+      <ag-grid-angular
+        class="erreserba-grid"
+        [rowData]="filteredErreserbak()"
+        [columnDefs]="colDefs"
+        [defaultColDef]="defaultColDef"
+        [pagination]="pagination"
+        [paginationPageSize]="paginationPageSize"
+        [paginationPageSizeSelector]="paginationPageSizeSelector">
+      </ag-grid-angular>
+    </div>
+  }
+</div>
+
+@if (egoeraAldatzekoa(); as erreserba) {
+  <div class="modal-backdrop fade show"></div>
+  <dialog open class="modal-dialog-custom card p-4 shadow-lg" aria-labelledby="egoera-modal-title">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 id="egoera-modal-title" class="m-0">Erreserbaren egoera aldatu</h5>
+      <button
+        type="button"
+        class="btn-close"
+        aria-label="Itxi"
+        [disabled]="egoeraGordetzen()"
+        (click)="itxiEgoera()"></button>
+    </div>
+
+    <p class="mb-3">
+      #{{ erreserba.id_erreserba }} -
+      {{ erreserba.erabiltzaile_izena }} {{ erreserba.erabiltzaile_abizenak }}
+    </p>
+
+    <div class="mb-3">
+      <label for="egoeraBerria" class="form-label">Egoera berria</label>
+      <select
+        id="egoeraBerria"
+        class="form-select"
+        [ngModel]="egoeraBerria()"
+        (ngModelChange)="egoeraBerria.set($event)">
+        @for (egoera of egoeraAukerak; track egoera.value) {
+          <option [ngValue]="egoera.value">{{ egoera.label }}</option>
+        }
+      </select>
+    </div>
+
+    @if (egoeraErrorea()) {
+      <div class="alert alert-danger" role="alert">{{ egoeraErrorea() }}</div>
+    }
+
+    <div class="d-flex justify-content-end gap-2 mt-2">
+      <button type="button" class="btn btn-secondary" [disabled]="egoeraGordetzen()" (click)="itxiEgoera()">
+        Utzi
+      </button>
+      <button type="button" class="btn btn-primary" [disabled]="egoeraGordetzen()" (click)="gordeEgoera()">
+        {{ egoeraGordetzen() ? 'Gordetzen...' : 'Gorde' }}
+      </button>
+    </div>
+  </dialog>
+}
+
+@if (ezeztatzekoa(); as erreserba) {
+  <div class="modal-backdrop fade show"></div>
+  <dialog open class="modal-dialog-custom card p-4 shadow-lg" aria-labelledby="ezeztatu-modal-title">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 id="ezeztatu-modal-title" class="m-0">Erreserba ezeztatu</h5>
+      <button
+        type="button"
+        class="btn-close"
+        aria-label="Itxi"
+        [disabled]="ezeztatzen()"
+        (click)="itxiEzeztatzea()"></button>
+    </div>
+
+    <p class="mb-2">
+      <strong>#{{ erreserba.id_erreserba }}</strong> erreserba ezeztatu nahi duzu?
+    </p>
+    <p class="text-muted mb-3">
+      {{ erreserba.erabiltzaile_izena }} {{ erreserba.erabiltzaile_abizenak }} ·
+      {{ erreserba.kargagune_izena }} ·
+      {{ formatDate(erreserba.erreserba_hasiera) }} - {{ formatDate(erreserba.erreserba_bukaera) }}
+    </p>
+
+    @if (ezeztatzeErrorea()) {
+      <div class="alert alert-danger" role="alert">{{ ezeztatzeErrorea() }}</div>
+    }
+
+    <div class="d-flex justify-content-end gap-2 mt-2">
+      <button type="button" class="btn btn-secondary" [disabled]="ezeztatzen()" (click)="itxiEzeztatzea()">
+        Utzi
+      </button>
+      <button type="button" class="btn btn-danger" [disabled]="ezeztatzen()" (click)="berretsiEzeztatzea()">
+        {{ ezeztatzen() ? 'Ezeztatzen...' : 'Ezeztatu' }}
+      </button>
+    </div>
+  </dialog>
+}

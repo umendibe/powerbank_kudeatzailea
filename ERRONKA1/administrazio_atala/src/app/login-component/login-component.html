@@ -9,22 +9,26 @@
             height="48"
             width="48"
             class="inline" />
-          <h1 class="text-3xl">Sign in</h1>
-          <p>to continue to Application</p>
+          <h1 class="text-3xl">Saioa hasi</h1>
+          <p>Administrazio atalera sartzeko, hasi saioa administratzaile kontu batekin.</p>
         </div>
 
         <div class="flex flex-col space-y-2 p-4 md:mt-12">
           <mat-form-field class="w-full">
-            <mat-label>Email</mat-label>
-            <input matInput type="email" formControlName="email" />
+            <mat-label>Emaila</mat-label>
+            <input
+              matInput
+              type="email"
+              formControlName="email"
+              autocomplete="email" />
             @if (
               (form.get('email')?.touched || form.get('email')?.dirty) &&
               form.get('email')?.hasError('required')
             ) {
               <mat-error>
                 <mat-icon class="form-field-error-icon">error</mat-icon>
-                Email is required</mat-error
-              >
+                Emaila derrigorrezkoa da
+              </mat-error>
             }
             @if (
               (form.get('email')?.touched || form.get('email')?.dirty) &&
@@ -32,41 +36,46 @@
             ) {
               <mat-error>
                 <mat-icon class="form-field-error-icon">error</mat-icon>
-                Email is invalid
+                Emaila ez da baliozkoa
               </mat-error>
             }
           </mat-form-field>
+
           <mat-form-field class="w-full">
-            <mat-label>Password</mat-label>
-            <input matInput type="password" formControlName="password" />
+            <mat-label>Pasahitza</mat-label>
+            <input
+              matInput
+              type="password"
+              formControlName="password"
+              autocomplete="current-password" />
             @if (
               (form.get('password')?.touched || form.get('password')?.dirty) &&
               form.get('password')?.hasError('required')
             ) {
               <mat-error>
                 <mat-icon class="form-field-error-icon">error</mat-icon>
-                Password is required</mat-error
-              >
-            }
-            @if (
-              (form.get('password')?.touched || form.get('password')?.dirty) &&
-              form.get('password')?.hasError('minlength')
-            ) {
-              <mat-error>
-                <mat-icon class="form-field-error-icon">error</mat-icon>
-                Password must be at least 8 characters
+                Pasahitza derrigorrezkoa da
               </mat-error>
             }
           </mat-form-field>
-          <div class="density-3 forgot-email-container">
-            <a matButton>Forgot password?</a>
-          </div>
+
+          @if (errorMessage()) {
+            <div class="alert alert-danger mb-0 d-flex align-items-center gap-2" role="alert">
+              <mat-icon class="form-field-error-icon">error</mat-icon>
+              <span>{{ errorMessage() }}</span>
+            </div>
+          }
         </div>
       </div>
     </mat-card-content>
     <mat-card-actions align="end">
-      <a matButton>Create account</a>
-      <button matButton="filled" type="submit">Sign in</button>
+      <button matButton="filled" type="submit" [disabled]="loading()">
+        @if (loading()) {
+          Kargatzen...
+        } @else {
+          Sartu
+        }
+      </button>
     </mat-card-actions>
   </mat-card>
 </form>

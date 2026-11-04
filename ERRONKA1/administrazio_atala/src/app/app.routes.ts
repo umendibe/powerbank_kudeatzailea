@@ -3,22 +3,42 @@ import { ErabiltzaileakComponent } from './erabiltzaileak-component/erabiltzaile
 import { LoginComponent } from './login-component/login-component';
 import { PowerbankComponent } from './powerbank-component/powerbank-component';
 import { KargaguneakComponent } from './kargaguneak-component/kargaguneak-component';
+import { ErreserbakComponent } from './erreserbak-component/erreserbak-component';
+import { adminAuthGuard, loginGuard } from './auth/admin-auth.guard';
 
 export const routes: Routes = [
     {
         path: 'login',
         component: LoginComponent,
+        canActivate: [loginGuard],
+    },
+    {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'erabiltzaileak',
     },
     {
         path: 'erabiltzaileak',
         component: ErabiltzaileakComponent,
+        canActivate: [adminAuthGuard],
     },
     {
         path: 'powerbanks',
         component: PowerbankComponent,
+        canActivate: [adminAuthGuard],
     },
     {
         path: 'kargaguneak',
         component: KargaguneakComponent,
+        canActivate: [adminAuthGuard],
+    },
+    {
+        path: 'erreserbak',
+        component: ErreserbakComponent,
+        canActivate: [adminAuthGuard],
+    },
+    {
+        path: '**',
+        redirectTo: '',
     }
 ];

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-label="Kargagunearen irudia ez dago erabilgarri">
+  <rect width="640" height="360" fill="#e9ecef"/>
+  <g fill="#adb5bd">
+    <rect x="250" y="120" width="140" height="120" rx="18"/>
+    <rect x="268" y="138" width="104" height="78" rx="10" fill="#f8f9fa"/>
+    <circle cx="320" cy="177" r="18" fill="#adb5bd"/>
+    <rect x="292" y="240" width="56" height="12" rx="6"/>
+  </g>
+  <text x="320" y="300" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#6c757d">Kargagunea</text>
+</svg>

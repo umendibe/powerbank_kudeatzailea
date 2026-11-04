@@ -1,24 +1,113 @@
 <!DOCTYPE html>
 <html lang="eu">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Powerbank Alokazioa</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Powerbank alokazioa | Kargaguneak</title>
+  <link rel="icon" type="image/svg+xml" href="assets/placeholder.svg" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="css/estiloak.css" />
 </head>
-<body>
-    <header>
-        <nav>
-            <ul>
-                <li><a href="/">Kargaguneak</a></li>
-                <li><a href="">Erabiltzaileak</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
+<body data-page="kargaguneak">
+  <div id="navbar"></div>
 
-    </main>
-    <footer>
+  <main>
+    <section class="hero py-5 mb-4">
+      <div class="container py-4">
+        <div class="row align-items-center g-4">
+          <div class="col-lg-8">
+            <span class="badge text-bg-warning mb-3">Herriko powerbank zerbitzua</span>
+            <h1 class="display-5 fw-bold mb-3">Aurkitu kargagune bat eta erreserbatu zure powerbank-a</h1>
+            <p class="lead mb-4">
+              Kargaguneen informazioa eta karga-postuen erabilgarritasuna modu librean kontsultatu
+              ditzakezu. Erreserba egiteko, hasi saioa edo erregistratu.
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+              <a class="btn btn-warning btn-lg" href="#kargaguneak">
+                <i class="bi bi-geo-alt me-1"></i>Kargaguneak ikusi
+              </a>
+              <a class="btn btn-outline-light btn-lg" id="heroReserveButton" href="login.html">
+                <i class="bi bi-calendar-plus me-1"></i>Erreserbatu
+              </a>
+            </div>
+          </div>
+          <div class="col-lg-4 text-center d-none d-lg-block">
+            <i class="bi bi-battery-charging" style="font-size: 9rem; opacity: 0.85;"></i>
+          </div>
+        </div>
+      </div>
+    </section>
 
-    </footer>
+    <section class="container pb-5" id="kargaguneak">
+      <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+        <div>
+          <h2 class="h3 mb-1">Kargaguneak</h2>
+          <p class="text-muted mb-0">Herriko kargagune guztien zerrenda.</p>
+        </div>
+        <span class="text-muted small" id="emaitzaKopurua"></span>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+              <label for="bilaketa" class="form-label">Bilatu izen edo helbidearen arabera</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input id="bilaketa" type="search" class="form-control" placeholder="Adibidez: erdialdea" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label for="egoeraFilter" class="form-label">Egoera</label>
+              <select id="egoeraFilter" class="form-select">
+                <option value="">Egoera guztiak</option>
+                <option value="erabilgarri">Erabilgarri</option>
+                <option value="mantentze_lanetan">Mantentze-lanetan</option>
+                <option value="zerbitzuz_kanpo">Zerbitzuz kanpo</option>
+              </select>
+            </div>
+            <div class="col-md-2 d-grid">
+              <button id="garbituFilter" type="button" class="btn btn-outline-secondary">
+                <i class="bi bi-x-lg me-1"></i>Garbitu
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="alerta"></div>
+      <div id="kargaguneZerrenda" class="row g-4"></div>
+    </section>
+  </main>
+
+  <footer class="py-4 mt-auto">
+    <div class="container d-flex flex-wrap justify-content-between gap-2">
+      <span>&copy; <span id="urtea"></span> Powerbank alokazioa</span>
+      <span><a href="index.html">Kargaguneak</a> · <a href="login.html">Saioa hasi</a></span>
+    </div>
+  </footer>
+
+  <div class="modal fade" id="xehetasunModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title h5" id="xehetasunIzena">Kargagunearen xehetasunak</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Itxi"></button>
+        </div>
+        <div class="modal-body" id="xehetasunEdukia"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Itxi</button>
+          <a class="btn btn-primary" id="xehetasunErreserbatu" href="#">
+            <i class="bi bi-calendar-plus me-1"></i>Erreserbatu
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/index.js"></script>
 </body>
 </html>

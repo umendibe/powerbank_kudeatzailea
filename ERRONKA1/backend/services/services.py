@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import HTTPException, status
 from models import models
 from schemas import schemas
@@ -76,6 +78,118 @@ def list_erreserbak(db: Session):
         return db.scalars(stmt).all()
     except SQLAlchemyError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Errorea erreserbak ekartzen") from e
+
+
+def list_erreserbak_admin(db: Session):
+    try:
+        stmt = (
+            select(
+                models.Erreserbak,
+                models.Erabiltzaileak.izena,
+                models.Erabiltzaileak.abizenak,
+                models.Erabiltzaileak.email,
+                models.Takillak.izena,
+                models.Powerbank.karga,
+            )
+            .join(models.Erabiltzaileak, models.Erreserbak.id_erab == models.Erabiltzaileak.id_erab)
+            .join(models.Takillak, models.Erreserbak.id_hasiera_takilla == models.Takillak.id_takilla)
+            .join(models.Powerbank, models.Erreserbak.id_power == models.Powerbank.id_power)
+            .order_by(models.Erreserbak.id_erreserba)
+        )
+
+        erreserbak = []
+        for (
+            erreserba,
+            erabiltzaile_izena,
+            erabiltzaile_abizenak,
+            erabiltzaile_email,
+            kargagune_izena,
+            powerbank_karga,
+        ) in db.execute(stmt).all():
+            datuak = schemas.ListErreserbak.model_validate(erreserba).model_dump()
+            erreserbak.append(
+                schemas.ErreserbaAdminResponse(
+                    **datuak,
+                    erabiltzaile_izena=erabiltzaile_izena,
+                    erabiltzaile_abizenak=erabiltzaile_abizenak,
+                    erabiltzaile_email=erabiltzaile_email,
+                    kargagune_izena=kargagune_izena,
+                    powerbank_karga=powerbank_karga,
+                )
+            )
+
+        return erreserbak
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errorea erreserbak ekartzen",
+        ) from e
+
+
+def patch_erreserba_egoera(db: Session, id: int, egoera: str):
+    db_erreserba = db.get(models.Erreserbak, id)
+    if not db_erreserba:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erreserba aurkitu")
+
+    egoera_enum = models.ErreserbaEgoeraEnum(egoera)
+
+    if egoera_enum == models.ErreserbaEgoeraEnum.aktiboa and db_erreserba.egoera != models.ErreserbaEgoeraEnum.aktiboa:
+        overlap = db.scalars(
+            select(models.Erreserbak).where(
+                models.Erreserbak.id_erreserba != id,
+                models.Erreserbak.egoera == models.ErreserbaEgoeraEnum.aktiboa,
+                models.Erreserbak.id_hasiera_postua == db_erreserba.id_hasiera_postua,
+                models.Erreserbak.erreserba_hasiera < db_erreserba.erreserba_bukaera,
+                models.Erreserbak.erreserba_bukaera > db_erreserba.erreserba_hasiera,
+            )
+        ).first()
+        if overlap:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Beste erreserba aktibo bat dago tarte horretan postu berean.",
+            )
+
+    try:
+        db_erreserba.egoera = egoera_enum
+        db.commit()
+        db.refresh(db_erreserba)
+        return db_erreserba
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errorea erreserbaren egoera aldatzen",
+        ) from e
+
+
+def cancel_erreserba(db: Session, id: int):
+    db_erreserba = db.get(models.Erreserbak, id)
+    if not db_erreserba:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erreserba aurkitu")
+
+    if db_erreserba.egoera == models.ErreserbaEgoeraEnum.ezeztatuta:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Erreserba hau dagoeneko ezeztatuta dago.",
+        )
+
+    if db_erreserba.egoera != models.ErreserbaEgoeraEnum.aktiboa:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Soilik erreserba aktiboak ezeztatu daitezke.",
+        )
+
+    try:
+        db_erreserba.egoera = models.ErreserbaEgoeraEnum.ezeztatuta
+        db.commit()
+        db.refresh(db_erreserba)
+        return db_erreserba
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errorea erreserba ezeztatzen",
+        ) from e
     
 def patch_erabiltzailea(db: Session, id: int, erabiltzaile: schemas.CreateErabiltzaile):
     db_erabiltzaile = db.get(models.Erabiltzaileak, id)
@@ -135,6 +249,33 @@ def get_all_takillak(db: Session):
         return db.scalars(stmt).all()
     except SQLAlchemyError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Errorea takillak ekartzen") from e
+
+
+def get_takilla(db: Session, id: int):
+    takilla = db.get(models.Takillak, id)
+    if not takilla:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da kargagunea aurkitu")
+    return takilla
+
+
+def get_takilla_irudiak(db: Session, id_takilla: int | None = None):
+    try:
+        stmt = select(models.TakillakIrudiak).order_by(models.TakillakIrudiak.id_irudi)
+        if id_takilla is not None:
+            if not db.get(models.Takillak, id_takilla):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Ez da kargagunea aurkitu",
+                )
+            stmt = stmt.where(models.TakillakIrudiak.id_takilla == id_takilla)
+        return db.scalars(stmt).all()
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errorea kargaguneen irudiak ekartzen",
+        ) from e
 
 def patch_takilla(db: Session, id: int, takilla: schemas.PatchTakilla):
     db_takilla = db.get(models.Takillak, id)
@@ -417,5 +558,250 @@ def login(db: Session, email: str, password: str):
         )
         
     return db_erabiltzaile.id_rol
+
+
+def admin_login(db: Session, email: str, password: str):
+    stmt = select(models.Erabiltzaileak).where(
+        models.Erabiltzaileak.email == email,
+        models.Erabiltzaileak.pasahitza == password,
+    )
+
+    db_erabiltzaile = db.scalars(stmt).first()
+
+    if not db_erabiltzaile:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Emaila edo pasahitza okerra da",
+        )
+
+    if not db_erabiltzaile.activo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Erabiltzailearen kontua ez dago aktibo",
+        )
+
+    if db_erabiltzaile.id_rol != 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Kontu honek ez du administrazio baimenik",
+        )
+
+    return db_erabiltzaile
+
+
+################ ATAL PUBLIKOA ################
+
+def public_login(db: Session, email: str, password: str):
+    stmt = select(models.Erabiltzaileak).where(
+        models.Erabiltzaileak.email == email,
+        models.Erabiltzaileak.pasahitza == password,
+    )
+
+    db_erabiltzaile = db.scalars(stmt).first()
+
+    if not db_erabiltzaile:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Emaila edo pasahitza okerra da",
+        )
+
+    if not db_erabiltzaile.activo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Erabiltzailearen kontua ez dago aktibo",
+        )
+
+    return db_erabiltzaile
+
+
+def register_erabiltzaile_publico(db: Session, erabiltzaile: schemas.CreateErabiltzailePublico):
+    db_erabiltzaile = models.Erabiltzaileak(
+        **erabiltzaile.model_dump(),
+        id_rol=2,
+        activo=True,
+    )
+
+    try:
+        db.add(db_erabiltzaile)
+        db.commit()
+        db.refresh(db_erabiltzaile)
+        return db_erabiltzaile
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ezin da erabiltzailea erregistratu: NANa edo emaila dagoeneko erregistratuta dago.",
+        ) from e
+
+
+def get_erabiltzaile_publico(db: Session, id: int):
+    db_erabiltzaile = db.get(models.Erabiltzaileak, id)
+    if not db_erabiltzaile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
+    return db_erabiltzaile
+
+
+def update_erabiltzaile_publico(
+    db: Session,
+    id: int,
+    erabiltzaile: schemas.UpdateErabiltzailePublico,
+):
+    db_erabiltzaile = db.get(models.Erabiltzaileak, id)
+    if not db_erabiltzaile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
+
+    for field, value in erabiltzaile.model_dump(exclude_unset=True).items():
+        if value is None:
+            continue
+        setattr(db_erabiltzaile, field, value)
+
+    try:
+        db.commit()
+        db.refresh(db_erabiltzaile)
+        return db_erabiltzaile
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ezin izan dira datuak gorde: NANa edo emaila dagoeneko erabilita dago.",
+        ) from e
+
+
+def create_erreserba_publico(db: Session, erreserba: schemas.ErreserbaPublicoCreate):
+    hasiera = erreserba.erreserba_hasiera
+    bukaera = erreserba.erreserba_bukaera
+
+    if hasiera.tzinfo is None:
+        hasiera = hasiera.replace(tzinfo=timezone.utc)
+    if bukaera.tzinfo is None:
+        bukaera = bukaera.replace(tzinfo=timezone.utc)
+
+    if hasiera >= bukaera:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Hasiera ordua amaiera ordua baino lehenago izan behar da.",
+        )
+
+    if hasiera <= datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ezin da iraganeko datarako erreserbarik egin.",
+        )
+
+    db_erabiltzaile = db.get(models.Erabiltzaileak, erreserba.id_erab)
+    if not db_erabiltzaile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
+    if not db_erabiltzaile.activo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Erabiltzailearen kontua ez dago aktibo",
+        )
+
+    db_takilla = db.get(models.Takillak, erreserba.id_hasiera_takilla)
+    if not db_takilla:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da kargagunea aurkitu")
+    if db_takilla.egoera != models.TakillakEgoeraEnum.erabilgarri:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Kargagunea ez dago erabilgarri.",
+        )
+
+    db_postu = db.get(models.Postuak, erreserba.id_hasiera_postua)
+    if not db_postu or db_postu.id_takilla != erreserba.id_hasiera_takilla:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ez da karga-postua aurkitu kargagune honetan.",
+        )
+
+    db_powerbank = db.get(models.Powerbank, erreserba.id_power)
+    if not db_powerbank:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da powerbank-a aurkitu")
+    if (
+        db_powerbank.id_postu != erreserba.id_hasiera_postua
+        or db_powerbank.id_takilla != erreserba.id_hasiera_takilla
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Aukeratutako powerbank-a ez dago karga-postu horretan.",
+        )
+
+    overlap = db.scalars(
+        select(models.Erreserbak).where(
+            models.Erreserbak.egoera == models.ErreserbaEgoeraEnum.aktiboa,
+            models.Erreserbak.erreserba_hasiera < bukaera,
+            models.Erreserbak.erreserba_bukaera > hasiera,
+            or_(
+                models.Erreserbak.id_hasiera_postua == erreserba.id_hasiera_postua,
+                models.Erreserbak.id_power == erreserba.id_power,
+            ),
+        )
+    ).first()
+    if overlap:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Powerbank edo karga-postu honek erreserba bat du tarte horretan.",
+        )
+
+    db_erreserba = models.Erreserbak(
+        id_erab=erreserba.id_erab,
+        id_power=erreserba.id_power,
+        erreserba_hasiera=hasiera,
+        erreserba_bukaera=bukaera,
+        id_hasiera_takilla=erreserba.id_hasiera_takilla,
+        id_hasiera_postua=erreserba.id_hasiera_postua,
+        egoera=models.ErreserbaEgoeraEnum.aktiboa,
+    )
+
+    try:
+        db.add(db_erreserba)
+        db.commit()
+        db.refresh(db_erreserba)
+        return db_erreserba
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errorea erreserba sortzen",
+        ) from e
+
+
+def cancel_erreserba_publico(db: Session, id: int, id_erab: int):
+    db_erreserba = db.get(models.Erreserbak, id)
+    if not db_erreserba:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erreserba aurkitu")
+
+    if db_erreserba.id_erab != id_erab:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ez duzu erreserba hau ezeztatzeko baimenik.",
+        )
+
+    if db_erreserba.egoera != models.ErreserbaEgoeraEnum.aktiboa:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Soilik erreserba aktiboak ezeztatu daitezke.",
+        )
+
+    hasiera = db_erreserba.erreserba_hasiera
+    if hasiera.tzinfo is None:
+        hasiera = hasiera.replace(tzinfo=timezone.utc)
+
+    if hasiera <= datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Etorkizuneko erreserbak soilik ezeztatu daitezke.",
+        )
+
+    try:
+        db_erreserba.egoera = models.ErreserbaEgoeraEnum.ezeztatuta
+        db.commit()
+        db.refresh(db_erreserba)
+        return db_erreserba
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Errorea erreserba ezeztatzen",
+        ) from e
     
     

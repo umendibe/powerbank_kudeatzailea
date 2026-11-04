@@ -25,6 +25,30 @@ def get_by_id(id: int, session: DbSession):
     return services.get_erabiltzaile_id(id, session)
 
 
+# Atal publikoko erabiltzailearen datuak (pasahitzik gabe)
+@powerbank_router.get(
+    "/erabiltzaileak/{id}/nire-datuak",
+    status_code=200,
+    response_model=schemas.ErabiltzailePublicoResponse,
+)
+def get_nire_datuak(id: int, session: DbSession):
+    return services.get_erabiltzaile_publico(session, id)
+
+
+# Atal publikotik norberaren datuak aldatu
+@powerbank_router.patch(
+    "/erabiltzaileak/{id}/nire-datuak",
+    status_code=200,
+    response_model=schemas.ErabiltzailePublicoResponse,
+)
+def update_nire_datuak(
+    id: int,
+    erabiltzaile: schemas.UpdateErabiltzailePublico,
+    session: DbSession,
+):
+    return services.update_erabiltzaile_publico(session, id, erabiltzaile)
+
+
 # Powerbank guztiak lortu
 @powerbank_router.get("/powerbanks", response_model=list[schemas.ListPowerbank])
 def read_powerbanks(session: DbSession):
@@ -47,15 +71,105 @@ def get_erreserbak(session: DbSession):
     return services.list_erreserbak(session)
 
 
+# Administrazio atalean erreserba guztiak datu osagarriekin lortu
+@powerbank_router.get(
+    "/erreserbak/admin",
+    status_code=status.HTTP_200_OK,
+    response_model=list[schemas.ErreserbaAdminResponse],
+)
+def get_erreserbak_admin(session: DbSession):
+    return services.list_erreserbak_admin(session)
+
+
+# Erreserbaren egoera aldatu
+@powerbank_router.patch(
+    "/erreserbak/{id}/egoera",
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.ErreserbaResponse,
+)
+def update_erreserba_egoera(id: int, egoera: schemas.PatchErreserbaEgoera, session: DbSession):
+    return services.patch_erreserba_egoera(session, id, egoera.egoera)
+
+
+# Erreserba ezeztatu
+@powerbank_router.patch(
+    "/erreserbak/{id}/ezeztatu",
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.ErreserbaResponse,
+)
+def cancel_erreserba(id: int, session: DbSession):
+    return services.cancel_erreserba(session, id)
+
+
+# Atal publikotik erreserba berria sortu
+@powerbank_router.post(
+    "/erreserbak/publiko",
+    status_code=status.HTTP_201_CREATED,
+    response_model=schemas.ErreserbaResponse,
+)
+def create_erreserba_publico(
+    erreserba: schemas.ErreserbaPublicoCreate,
+    session: DbSession,
+):
+    return services.create_erreserba_publico(session, erreserba)
+
+
+# Atal publikotik norberaren etorkizuneko erreserba ezeztatu
+@powerbank_router.patch(
+    "/erreserbak/{id}/ezeztatu-publikoa",
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.ErreserbaResponse,
+)
+def cancel_erreserba_publico(
+    id: int,
+    datuak: schemas.ErreserbaPublicoCancel,
+    session: DbSession,
+):
+    return services.cancel_erreserba_publico(session, id, datuak.id_erab)
+
+
 @powerbank_router.post("/login", status_code=status.HTTP_200_OK)
 def login(datuak: schemas.ErabiltzaileLogin, db: DbSession):
     return services.login(db, datuak.email, datuak.pasahitza)
+
+
+# Administrazio ataleko login-a: soilik rol 1 duten erabiltzaile aktiboak
+@powerbank_router.post(
+    "/login/admin",
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.AdminLoginResponse,
+)
+def admin_login(datuak: schemas.ErabiltzaileLogin, db: DbSession):
+    return services.admin_login(db, datuak.email, datuak.pasahitza)
+
+
+# Atal publikoko login-a: erabiltzaile aktibo guztiak
+@powerbank_router.post(
+    "/login/public",
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.PublicLoginResponse,
+)
+def public_login(datuak: schemas.ErabiltzaileLogin, db: DbSession):
+    return services.public_login(db, datuak.email, datuak.pasahitza)
 
 ################# POST ENDPOINTAK #################
 
 @powerbank_router.post("/erabiltzaileak/post", status_code=201, response_model=schemas.ListErabiltzaileak)
 def create_erabiltzaile(session: DbSession, erabiltzaile: schemas.CreateErabiltzaile):
     return services.post_erabiltzaile(session, erabiltzaile)
+
+
+# Atal publikoko erregistroa: rola beti 2 (erabiltzaile arrunta)
+@powerbank_router.post(
+    "/erabiltzaileak/erregistratu",
+    status_code=201,
+    response_model=schemas.ErabiltzailePublicoResponse,
+)
+def register_erabiltzaile_publico(
+    session: DbSession,
+    erabiltzaile: schemas.CreateErabiltzailePublico,
+):
+    return services.register_erabiltzaile_publico(session, erabiltzaile)
 
 
 @powerbank_router.post("/takillak/post", status_code=201, response_model=schemas.TakillaResponse)
@@ -66,6 +180,24 @@ def post_takilla(session: DbSession, takilla: schemas.CreateTakilla):
 @powerbank_router.get("/takillak", response_model=list[schemas.TakillaResponse])
 def get_takillak(session: DbSession):
     return services.get_all_takillak(session)
+
+
+# Kargagune guztien irudiak (zerrenda komuna)
+@powerbank_router.get("/takillak/irudiak", response_model=list[schemas.TakillaIrudiaResponse])
+def get_takilla_irudiak(session: DbSession):
+    return services.get_takilla_irudiak(session)
+
+
+# Kargagune bakarraren xehetasunak
+@powerbank_router.get("/takillak/{id}", response_model=schemas.TakillaResponse)
+def get_takilla(id: int, session: DbSession):
+    return services.get_takilla(session, id)
+
+
+# Kargagune baten irudiak
+@powerbank_router.get("/takillak/{id}/irudiak", response_model=list[schemas.TakillaIrudiaResponse])
+def get_takilla_irudiak_by_id(id: int, session: DbSession):
+    return services.get_takilla_irudiak(session, id)
 
 
 @powerbank_router.get("/takillak/{id}/postuak", response_model=list[schemas.PostuResponse])
@@ -144,7 +276,7 @@ def create_powerbank_reservation(erreserba: schemas.ErreserbaCreate, db: DbSessi
 
     overlap = db.query(models.Erreserbak).filter(
         models.Erreserbak.id_hasiera_postua == erreserba.id_hasiera_postua,
-        models.Erreserbak.egoera == 'aktiboa',
+        models.Erreserbak.egoera == models.ErreserbaEgoeraEnum.aktiboa,
         models.Erreserbak.erreserba_hasiera < erreserba.erreserba_bukaera,
         models.Erreserbak.erreserba_bukaera > erreserba.erreserba_hasiera,
     ).first()
@@ -158,7 +290,7 @@ def create_powerbank_reservation(erreserba: schemas.ErreserbaCreate, db: DbSessi
         erreserba_bukaera=erreserba.erreserba_bukaera,
         id_hasiera_takilla=erreserba.id_hasiera_takilla,
         id_hasiera_postua=erreserba.id_hasiera_postua,
-        egoera  = 'aktiboa',
+        egoera  = models.ErreserbaEgoeraEnum.aktiboa,
     )
     db.add(nova)
     db.commit()

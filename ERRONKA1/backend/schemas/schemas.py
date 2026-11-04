@@ -15,6 +15,30 @@ class LoginResponse(BaseModel):
     id_rol: str
 
 
+# Administrazio atalerako login-a (soilik rol 1 duten erabiltzaileak)
+class AdminLoginResponse(BaseModel):
+    id_erab: int
+    izena: str
+    email: str
+    id_rol: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Atal publikoko login-a (erabiltzaile arruntak eta administratzaileak)
+class PublicLoginResponse(BaseModel):
+    id_erab: int
+    nan: str
+    izena: str
+    abizenak: str
+    email: str
+    helbidea: str
+    id_rol: int
+    activo: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # Erabiltzaileak zerrendatzeko (taula, zerrenda bat...)
 class ListErabiltzaileak(BaseModel):
     id_erab: int
@@ -50,6 +74,40 @@ class PatchErabiltzaile(BaseModel):
 class PatchErabiltzaileEgoera(BaseModel):
     activo: bool
 
+
+# Atal publikorako erregistroa (rola beti 2 izango da)
+class CreateErabiltzailePublico(BaseModel):
+    nan: str = Field(min_length=9, max_length=9)
+    izena: str = Field(min_length=2)
+    abizenak: str = Field(min_length=2)
+    email: str = Field(max_length=200)
+    pasahitza: str = Field(min_length=6)
+    helbidea: str = Field(min_length=5)
+
+
+# Atal publikoko erabiltzailearen datuak (pasahitzik gabe)
+class ErabiltzailePublicoResponse(BaseModel):
+    id_erab: int
+    nan: str
+    izena: str
+    abizenak: str
+    email: str
+    helbidea: str
+    id_rol: int
+    activo: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Atal publikotik norberaren datuak aldatzeko
+class UpdateErabiltzailePublico(BaseModel):
+    nan: str | None = Field(default=None, min_length=9, max_length=9)
+    izena: str | None = Field(default=None, min_length=2)
+    abizenak: str | None = Field(default=None, min_length=2)
+    email: str | None = Field(default=None, max_length=200)
+    pasahitza: str | None = Field(default=None, min_length=6)
+    helbidea: str | None = Field(default=None, min_length=5)
+
     
 # ERRESERBEN ESKEMAK
 
@@ -71,6 +129,36 @@ class ListErreserbak(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# Administrazio atalean erreserbak erakusteko (erabiltzaile, kargagune eta powerbank datuekin)
+class ErreserbaAdminResponse(ListErreserbak):
+    erabiltzaile_izena: str
+    erabiltzaile_abizenak: str
+    erabiltzaile_email: str
+    kargagune_izena: str
+    powerbank_karga: int
+
+
+# Erreserbaren egoera aldatzeko
+class PatchErreserbaEgoera(BaseModel):
+    egoera: Literal["aktiboa", "amaituta", "ezeztatuta"]
+
+
+# Atal publikotik erreserba bat sortzeko
+class ErreserbaPublicoCreate(BaseModel):
+    id_erab: int
+    id_power: int
+    erreserba_hasiera: datetime
+    erreserba_bukaera: datetime
+    id_hasiera_takilla: int
+    id_hasiera_postua: int
+
+
+# Atal publikotik norberaren erreserba ezeztatzeko
+class ErreserbaPublicoCancel(BaseModel):
+    id_erab: int
+
     
 # Erabiltzaile batek erreserba bat sortzeko (datu basean gordetzeko)
 class CreateErreserba(BaseModel):
@@ -151,6 +239,14 @@ class TakillaResponse(BaseModel):
     izena: str = Field(min_length=2, max_length=100)
     helbidea: str = Field(min_length=3, max_length=200)
     egoera: str = Field(max_length=20)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TakillaIrudiaResponse(BaseModel):
+    id_irudi: int
+    id_takilla: int
+    url: str
 
     model_config = ConfigDict(from_attributes=True)
 
