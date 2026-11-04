@@ -1,5 +1,18 @@
-<div class="container-fluid px-4 pb-5">
-  <h2 class="text-center mt-5 mb-4">ERRESERBEN KUDEAKETA</h2>
+<div class="container-fluid ios-page-shell">
+  <div class="ios-page-header">
+    <div>
+      <span class="ios-page-eyebrow">Administrazioa</span>
+      <h2 class="ios-page-title">Erreserben kudeaketa</h2>
+      <p class="ios-page-subtitle">
+        Erreserbak iragazi, egoera aldatu eta ezeztatu modu azkarrean.
+      </p>
+    </div>
+    <div class="ios-page-actions">
+      <button type="button" class="btn btn-outline-secondary" (click)="kargatuErreserbak()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Berritu
+      </button>
+    </div>
+  </div>
 
   <div class="card shadow-sm mb-4">
     <div class="card-body">
@@ -105,13 +118,9 @@
   }
 
   <div class="d-flex justify-content-between align-items-center mb-2">
-    <span class="text-muted">
+    <span class="text-muted small">
       {{ filteredErreserbak().length }} / {{ erreserbak().length }} erreserba
     </span>
-    <button type="button" class="btn btn-outline-primary btn-sm" (click)="kargatuErreserbak()">
-      <i class="bi bi-arrow-clockwise me-1"></i>
-      Berritu
-    </button>
   </div>
 
   @if (kargatzen()) {

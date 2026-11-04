@@ -1,35 +1,16 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { NgOptimizedImage } from '@angular/common';
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
-import {
-  MatCard,
-  MatCardActions,
-  MatCardContent,
-} from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { ReactiveFormsModule } from '@angular/forms';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
 
 @Component({
   selector: 'app-login-component',
   templateUrl: './login-component.html',
+  styleUrl: './login-component.css',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [
-    MatCard,
-    MatCardContent,
-    MatCardActions,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    ReactiveFormsModule,
-    MatIconModule,
-    NgOptimizedImage,
-  ],
+  imports: [ReactiveFormsModule],
 })
 export class LoginComponent {
   private readonly auth = inject(AuthService);

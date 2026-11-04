@@ -218,7 +218,11 @@ export class ErabiltzaileakComponent implements OnInit {
     { field: 'izena', headerName: 'IZENA' },
     { field: 'abizenak', headerName: 'ABIZENAK' },
     { field: 'email', headerName: 'EMAIL' },
-    { field: 'pasahitza', headerName: 'PASAHITZA' },
+    {
+      field: 'pasahitza',
+      headerName: 'PASAHITZA',
+      valueFormatter: (params) => (params.value ? '••••••••' : '—'),
+    },
     { field: 'helbidea', headerName: 'HELBIDEA' },
     { field: 'id_rol', headerName: 'ROL ID' },
     { field: 'activo', headerName: 'AKTIBO' },

@@ -1,18 +1,30 @@
-<div class="w-80 d-flex justify-content-center mb-5">
-    <button type="button" class="btn btn-success"
-        (click)="openForm()">Sortu</button>
-</div>
+<div class="grid-container">
+    <div class="ios-page-header">
+        <div>
+            <span class="ios-page-eyebrow">Administrazioa</span>
+            <h2 class="ios-page-title">Powerbanken kudeaketa</h2>
+            <p class="ios-page-subtitle">
+                Powerbank-ak sortu, kokapena aldatu eta beraien karga-maila ikusi.
+            </p>
+        </div>
+        <div class="ios-page-actions">
+            <button type="button" class="btn btn-primary" (click)="openForm()">
+                <i class="bi bi-plus-lg me-1"></i>Powerbank berria
+            </button>
+        </div>
+    </div>
 
-<div class="d-flex justify-content-center w-100">
-    <ag-grid-angular
-        style="width: 80%; height: 400px;"
-        [rowData]="powerbanks()"
-        [columnDefs]="colDefs"
-        [defaultColDef]="defaultColDef"
-        [pagination]="pagination"
-        [paginationPageSize]="paginationPageSize"
-        [paginationPageSizeSelector]="paginationPageSizeSelector">
-    </ag-grid-angular>
+    <div class="d-flex justify-content-center w-100">
+        <ag-grid-angular
+            class="ios-grid"
+            [rowData]="powerbanks()"
+            [columnDefs]="colDefs"
+            [defaultColDef]="defaultColDef"
+            [pagination]="pagination"
+            [paginationPageSize]="paginationPageSize"
+            [paginationPageSizeSelector]="paginationPageSizeSelector">
+        </ag-grid-angular>
+    </div>
 </div>
 
 @if (formulario()) {

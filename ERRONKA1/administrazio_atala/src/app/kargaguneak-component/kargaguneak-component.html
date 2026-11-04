@@ -1,10 +1,17 @@
 <div class="grid-container">
-    <h2 class="text-center mt-5 mb-5">KARGAGUNEEN ZERRENDA</h2>
-
-    <div class="d-flex justify-content-center mb-5">
-        <button type="button" class="btn btn-success" (click)="sortuBerria()">
-            Kargagune berria
-        </button>
+    <div class="ios-page-header">
+        <div>
+            <span class="ios-page-eyebrow">Administrazioa</span>
+            <h2 class="ios-page-title">Kargaguneen zerrenda</h2>
+            <p class="ios-page-subtitle">
+                Kargaguneak sortu, editatu eta beraien karga-postuak kudeatu.
+            </p>
+        </div>
+        <div class="ios-page-actions">
+            <button type="button" class="btn btn-primary" (click)="sortuBerria()">
+                <i class="bi bi-plus-lg me-1"></i>Kargagune berria
+            </button>
+        </div>
     </div>
 
     @if (taulaErrorea()) {

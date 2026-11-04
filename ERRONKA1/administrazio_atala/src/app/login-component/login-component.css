@@ -1,0 +1,328 @@
+:host {
+  display: block;
+}
+
+.ios-login-page {
+  display: grid;
+  min-height: calc(100vh - 73px);
+  padding: 42px 24px;
+  place-items: center;
+}
+
+.ios-login-card {
+  display: grid;
+  grid-template-columns: 1.06fr 0.94fr;
+  width: min(1040px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 30px 80px rgba(31, 41, 55, 0.16),
+    0 4px 18px rgba(31, 41, 55, 0.05);
+  backdrop-filter: blur(20px);
+}
+
+/* ---------- Brand panel ---------- */
+
+.ios-login-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  padding: 52px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 84% 12%, rgba(255, 255, 255, 0.28), transparent 17rem),
+    radial-gradient(circle at 10% 100%, rgba(88, 86, 214, 0.55), transparent 20rem),
+    linear-gradient(155deg, #34aadc 0%, #007aff 45%, #5856d6 100%);
+}
+
+.ios-login-brand::before,
+.ios-login-brand::after {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  content: '';
+}
+
+.ios-login-brand::before {
+  top: -150px;
+  right: -110px;
+  width: 360px;
+  height: 360px;
+}
+
+.ios-login-brand::after {
+  right: 42px;
+  bottom: -190px;
+  width: 430px;
+  height: 430px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ios-login-app-icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 76px;
+  height: 76px;
+  margin-bottom: 28px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.17);
+  box-shadow: 0 16px 36px rgba(9, 30, 66, 0.16);
+  font-size: 2.35rem;
+  backdrop-filter: blur(8px);
+}
+
+.ios-login-eyebrow {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
+.ios-login-title {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 16px;
+  font-size: clamp(2.4rem, 3.4vw, 3.2rem);
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 1.02;
+}
+
+.ios-login-description {
+  position: relative;
+  z-index: 1;
+  max-width: 41ch;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  opacity: 0.88;
+}
+
+.ios-login-features {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 30px;
+}
+
+.ios-login-feature {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.78rem;
+  font-weight: 650;
+  backdrop-filter: blur(8px);
+}
+
+.ios-login-visual {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 10px;
+  margin-top: 44px;
+  opacity: 0.72;
+}
+
+.ios-login-battery {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 1.2rem;
+}
+
+/* ---------- Form panel ---------- */
+
+.ios-login-form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.ios-login-form-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 30px;
+}
+
+.ios-login-form-heading h2 {
+  margin: 0 0 3px;
+  color: var(--ios-text);
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.ios-login-form-heading p {
+  margin: 0;
+  color: var(--ios-muted);
+  font-size: 0.88rem;
+}
+
+.ios-login-form-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--ios-blue);
+  font-size: 1.2rem;
+}
+
+.ios-field {
+  margin-bottom: 18px;
+}
+
+.ios-input-wrap {
+  position: relative;
+}
+
+.ios-input-wrap > i {
+  position: absolute;
+  top: 50%;
+  left: 15px;
+  z-index: 1;
+  color: var(--ios-muted);
+  font-size: 1rem;
+  transform: translateY(-50%);
+}
+
+.ios-input-wrap .form-control {
+  min-height: 54px;
+  padding-left: 2.7rem;
+  border-color: transparent;
+  border-radius: 14px;
+  background: #f2f2f7;
+  font-size: 0.95rem;
+}
+
+.ios-input-wrap .form-control:focus {
+  border-color: rgba(0, 122, 255, 0.55);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
+}
+
+.ios-input-wrap:focus-within > i {
+  color: var(--ios-blue);
+}
+
+.ios-field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 7px 0 0;
+  color: var(--ios-red);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.ios-login-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 13px;
+  background: rgba(255, 59, 48, 0.09);
+  color: #c42c23;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.ios-login-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  margin-top: 8px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(0, 122, 255, 0.26);
+}
+
+.ios-login-help {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 20px 0 0;
+  color: var(--ios-muted);
+  font-size: 0.76rem;
+  font-weight: 550;
+}
+
+@media (max-width: 899.98px) {
+  .ios-login-page {
+    padding: 26px 16px;
+  }
+
+  .ios-login-card {
+    grid-template-columns: 1fr;
+    max-width: 560px;
+  }
+
+  .ios-login-brand {
+    padding: 34px 34px 30px;
+  }
+
+  .ios-login-app-icon {
+    width: 62px;
+    height: 62px;
+    margin-bottom: 20px;
+    border-radius: 18px;
+    font-size: 1.9rem;
+  }
+
+  .ios-login-title {
+    font-size: 2.35rem;
+  }
+
+  .ios-login-visual {
+    display: none;
+  }
+
+  .ios-login-form {
+    padding: 34px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .ios-login-brand {
+    padding: 28px 24px;
+  }
+
+  .ios-login-features {
+    margin-top: 20px;
+  }
+
+  .ios-login-form {
+    padding: 26px 22px 30px;
+  }
+}

@@ -1,11 +1,50 @@
+import secrets
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from models import models
 from schemas import schemas
+from services.auth import get_password_hash, is_password_hash, verify_password
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
+
+
+def _hash_password(password: str) -> str:
+    return get_password_hash(password)
+
+
+def _autentifikatu(db: Session, email: str, password: str):
+    """Find an active credential and upgrade legacy plain-text passwords."""
+    db_erabiltzaile = db.scalars(
+        select(models.Erabiltzaileak).where(models.Erabiltzaileak.email == email)
+    ).first()
+
+    if not db_erabiltzaile:
+        return None
+
+    stored_password = db_erabiltzaile.pasahitza or ""
+
+    if is_password_hash(stored_password):
+        if not verify_password(password, stored_password):
+            return None
+        return db_erabiltzaile
+
+    # Compatibility for users created before hashing was enabled.
+    if not secrets.compare_digest(
+        stored_password.encode("utf-8"),
+        password.encode("utf-8"),
+    ):
+        return None
+
+    db_erabiltzaile.pasahitza = get_password_hash(password)
+    try:
+        db.commit()
+        db.refresh(db_erabiltzaile)
+    except SQLAlchemyError:
+        db.rollback()
+
+    return db_erabiltzaile
 
 
 def get_all_erabiltzaileak(db: Session):
@@ -58,7 +97,9 @@ def delete_erabiltzaile(db: Session, id: int):
 
 
 def post_erabiltzaile(db: Session, erabiltzaile: schemas.CreateErabiltzaile):
-    db_erabiltzaile = models.Erabiltzaileak(**erabiltzaile.model_dump(), activo=True)
+    datuak = erabiltzaile.model_dump()
+    datuak["pasahitza"] = _hash_password(datuak["pasahitza"])
+    db_erabiltzaile = models.Erabiltzaileak(**datuak, activo=True)
     try:
         db.add(db_erabiltzaile)
         db.commit()
@@ -195,8 +236,12 @@ def patch_erabiltzailea(db: Session, id: int, erabiltzaile: schemas.CreateErabil
     db_erabiltzaile = db.get(models.Erabiltzaileak, id)
     if not db_erabiltzaile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da existitzen")
-    
-    for field, value in erabiltzaile.model_dump(exclude_unset=True).items():
+
+    datuak = erabiltzaile.model_dump(exclude_unset=True)
+    if datuak.get("pasahitza"):
+        datuak["pasahitza"] = _hash_password(datuak["pasahitza"])
+
+    for field, value in datuak.items():
         setattr(db_erabiltzaile, field, value)
     
     try:
@@ -544,13 +589,8 @@ def patch_activo(db: Session, id_erab: int, erabiltzaile: schemas.PatchErabiltza
     
     
 def login(db: Session, email: str, password: str):
-    stmt = select(models.Erabiltzaileak).where(
-        models.Erabiltzaileak.email == email,
-        models.Erabiltzaileak.pasahitza == password
-    )
-    
-    db_erabiltzaile = db.scalars(stmt).first()
-    
+    db_erabiltzaile = _autentifikatu(db, email, password)
+
     if not db_erabiltzaile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
@@ -561,12 +601,7 @@ def login(db: Session, email: str, password: str):
 
 
 def admin_login(db: Session, email: str, password: str):
-    stmt = select(models.Erabiltzaileak).where(
-        models.Erabiltzaileak.email == email,
-        models.Erabiltzaileak.pasahitza == password,
-    )
-
-    db_erabiltzaile = db.scalars(stmt).first()
+    db_erabiltzaile = _autentifikatu(db, email, password)
 
     if not db_erabiltzaile:
         raise HTTPException(
@@ -592,12 +627,7 @@ def admin_login(db: Session, email: str, password: str):
 ################ ATAL PUBLIKOA ################
 
 def public_login(db: Session, email: str, password: str):
-    stmt = select(models.Erabiltzaileak).where(
-        models.Erabiltzaileak.email == email,
-        models.Erabiltzaileak.pasahitza == password,
-    )
-
-    db_erabiltzaile = db.scalars(stmt).first()
+    db_erabiltzaile = _autentifikatu(db, email, password)
 
     if not db_erabiltzaile:
         raise HTTPException(
@@ -615,8 +645,10 @@ def public_login(db: Session, email: str, password: str):
 
 
 def register_erabiltzaile_publico(db: Session, erabiltzaile: schemas.CreateErabiltzailePublico):
+    datuak = erabiltzaile.model_dump()
+    datuak["pasahitza"] = _hash_password(datuak["pasahitza"])
     db_erabiltzaile = models.Erabiltzaileak(
-        **erabiltzaile.model_dump(),
+        **datuak,
         id_rol=2,
         activo=True,
     )
@@ -650,7 +682,11 @@ def update_erabiltzaile_publico(
     if not db_erabiltzaile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
 
-    for field, value in erabiltzaile.model_dump(exclude_unset=True).items():
+    datuak = erabiltzaile.model_dump(exclude_unset=True)
+    if datuak.get("pasahitza"):
+        datuak["pasahitza"] = _hash_password(datuak["pasahitza"])
+
+    for field, value in datuak.items():
         if value is None:
             continue
         setattr(db_erabiltzaile, field, value)
