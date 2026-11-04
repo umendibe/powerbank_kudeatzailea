@@ -15,12 +15,15 @@ class LoginResponse(BaseModel):
     id_rol: str
 
 
-# Administrazio atalerako login-a (soilik rol 1 duten erabiltzaileak)
+# Administrazio atalerako login-a (rol 1 eta 3)
 class AdminLoginResponse(BaseModel):
     id_erab: int
     izena: str
     email: str
     id_rol: int
+    id_udalerria: int | None = None
+    udalerria_izena: str | None = None
+    token: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -34,7 +37,29 @@ class PublicLoginResponse(BaseModel):
     email: str
     helbidea: str
     id_rol: int
+    id_udalerria: int | None = None
+    udalerria_izena: str | None = None
     activo: bool
+    token: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Udalerriak
+class CreateUdalerria(BaseModel):
+    izena: str = Field(min_length=2, max_length=120)
+
+
+class PatchUdalerria(BaseModel):
+    izena: str | None = Field(default=None, min_length=2, max_length=120)
+    activo: bool | None = None
+
+
+class UdalerriaResponse(BaseModel):
+    id_udalerria: int
+    izena: str
+    activo: bool
+    kargagune_kopurua: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -46,9 +71,10 @@ class ListErabiltzaileak(BaseModel):
     izena: str = Field(min_length=2)
     abizenak: str = Field(min_length=2)
     email: str = Field(max_length=200)
-    pasahitza: str = Field(min_length=3)
     helbidea: str = Field(min_length=5)
-    id_rol: int = Field(ge=1, le=2)
+    id_rol: int = Field(ge=1, le=3)
+    id_udalerria: int | None = None
+    udalerria_izena: str | None = None
     activo: bool = Field(default=True)
 
 # Erabiltzaile bat sortzeko (datu basean gordetzeko eskema)
@@ -59,7 +85,8 @@ class CreateErabiltzaile(BaseModel):
     email: str = Field(max_length=200)
     pasahitza: str = Field(min_length=6)
     helbidea: str = Field(min_length=5)
-    id_rol: int = Field(ge=1, le=2)
+    id_rol: int = Field(ge=1, le=3)
+    id_udalerria: int | None = None
 
 class PatchErabiltzaile(BaseModel):
     nan: str | None = Field(default=None, min_length=9, max_length=9)
@@ -68,7 +95,8 @@ class PatchErabiltzaile(BaseModel):
     email: str | None = Field(default=None,max_length=200)
     pasahitza: str | None = Field(default=None,min_length=6)
     helbidea: str | None = Field(default=None,min_length=5)
-    id_rol: int | None = Field(default=None,ge=1, le=2)
+    id_rol: int | None = Field(default=None,ge=1, le=3)
+    id_udalerria: int | None = Field(default=None)
     activo: bool | None = Field(default=None)
     
 class PatchErabiltzaileEgoera(BaseModel):
@@ -137,6 +165,8 @@ class ErreserbaAdminResponse(ListErreserbak):
     erabiltzaile_abizenak: str
     erabiltzaile_email: str
     kargagune_izena: str
+    id_udalerria: int | None = None
+    udalerria_izena: str | None = None
     powerbank_karga: int
 
 
@@ -227,17 +257,30 @@ class ErreserbaResponse(ErreserbaCreate):
 class CreateTakilla(BaseModel):
     izena: str = Field(min_length=2, max_length=100)
     helbidea: str = Field(min_length=3, max_length=200)
+    deskribapena: str | None = Field(default=None, max_length=300)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    id_udalerria: int
     egoera: Literal["erabilgarri", "mantentze_lanetan", "zerbitzuz_kanpo"]
     
 class PatchTakilla(BaseModel):
     izena: str | None = Field(default=None, min_length=2, max_length=100)
     helbidea: str | None = Field(default=None,min_length=3, max_length=200)
+    deskribapena: str | None = Field(default=None, max_length=300)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    id_udalerria: int | None = None
     egoera: Literal["erabilgarri", "mantentze_lanetan", "zerbitzuz_kanpo"] | None = None
     
 class TakillaResponse(BaseModel):
     id_takilla: int
     izena: str = Field(min_length=2, max_length=100)
     helbidea: str = Field(min_length=3, max_length=200)
+    deskribapena: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    id_udalerria: int
+    udalerria_izena: str | None = None
     egoera: str = Field(max_length=20)
 
     model_config = ConfigDict(from_attributes=True)

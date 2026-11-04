@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from models import models
 from schemas import schemas
 from services.auth import get_password_hash, is_password_hash, verify_password
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -47,27 +47,216 @@ def _autentifikatu(db: Session, email: str, password: str):
     return db_erabiltzaile
 
 
+def create_auth_session(db: Session, user_id: int) -> str:
+    token = secrets.token_urlsafe(32)
+    db.add(models.AuthSession(id=token, user_id=user_id))
+    db.commit()
+    return token
+
+
+def get_user_by_token(db: Session, token: str):
+    session = db.get(models.AuthSession, token)
+    if not session:
+        return None
+    return db.get(models.Erabiltzaileak, session.user_id)
+
+
+def delete_auth_session(db: Session, token: str) -> None:
+    session = db.get(models.AuthSession, token)
+    if session:
+        db.delete(session)
+        db.commit()
+
+
+def get_udalerria_izena(db: Session, id_udalerria: int | None) -> str | None:
+    if id_udalerria is None:
+        return None
+    udalerria = db.get(models.Udalerriak, id_udalerria)
+    return udalerria.izena if udalerria else None
+
+
+def get_all_udalerriak(db: Session, include_inactive: bool = False):
+    stmt = (
+        select(
+            models.Udalerriak,
+            func.count(models.Takillak.id_takilla).label("kargagune_kopurua"),
+        )
+        .outerjoin(
+            models.Takillak,
+            models.Takillak.id_udalerria == models.Udalerriak.id_udalerria,
+        )
+        .group_by(models.Udalerriak.id_udalerria)
+        .order_by(models.Udalerriak.izena)
+    )
+    if not include_inactive:
+        stmt = stmt.where(models.Udalerriak.activo.is_(True))
+
+    return [
+        schemas.UdalerriaResponse(
+            id_udalerria=udalerria.id_udalerria,
+            izena=udalerria.izena,
+            activo=udalerria.activo,
+            kargagune_kopurua=kopurua,
+        )
+        for udalerria, kopurua in db.execute(stmt).all()
+    ]
+
+
+def get_udalerria(db: Session, id_udalerria: int):
+    udalerria = db.get(models.Udalerriak, id_udalerria)
+    if not udalerria:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ez da udalerria aurkitu",
+        )
+    return udalerria
+
+
+def create_udalerria(db: Session, udalerria: schemas.CreateUdalerria):
+    db_udalerria = models.Udalerriak(izena=udalerria.izena, activo=True)
+
+    try:
+        db.add(db_udalerria)
+        db.commit()
+        db.refresh(db_udalerria)
+        return db_udalerria
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Udalerriaren izena dagoeneko existitzen da.",
+        ) from e
+
+
+def update_udalerria(db: Session, id_udalerria: int, udalerria: schemas.PatchUdalerria):
+    db_udalerria = get_udalerria(db, id_udalerria)
+    for field, value in udalerria.model_dump(exclude_unset=True).items():
+        setattr(db_udalerria, field, value)
+    try:
+        db.commit()
+        db.refresh(db_udalerria)
+        return db_udalerria
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Udalerriaren izena dagoeneko existitzen da.",
+        ) from e
+
+
+def _erabiltzaile_payload(db: Session, erabiltzaile: models.Erabiltzaileak):
+    return schemas.ListErabiltzaileak(
+        id_erab=erabiltzaile.id_erab,
+        nan=erabiltzaile.nan,
+        izena=erabiltzaile.izena,
+        abizenak=erabiltzaile.abizenak,
+        email=erabiltzaile.email,
+        helbidea=erabiltzaile.helbidea,
+        id_rol=erabiltzaile.id_rol,
+        id_udalerria=erabiltzaile.id_udalerria,
+        udalerria_izena=get_udalerria_izena(db, erabiltzaile.id_udalerria),
+        activo=erabiltzaile.activo,
+    )
+
+
+def _takilla_payload(db: Session, takilla: models.Takillak):
+    return schemas.TakillaResponse(
+        id_takilla=takilla.id_takilla,
+        izena=takilla.izena,
+        helbidea=takilla.helbidea,
+        deskribapena=takilla.deskribapena,
+        latitude=takilla.latitude,
+        longitude=takilla.longitude,
+        id_udalerria=takilla.id_udalerria,
+        udalerria_izena=get_udalerria_izena(db, takilla.id_udalerria),
+        egoera=takilla.egoera.value,
+    )
+
+
+def is_system_admin(user: models.Erabiltzaileak | None) -> bool:
+    return bool(user and user.id_rol == 1)
+
+
+def is_municipality_admin(user: models.Erabiltzaileak | None) -> bool:
+    return bool(user and user.id_rol == 3)
+
+
+def is_staff(user: models.Erabiltzaileak | None) -> bool:
+    return bool(user and user.id_rol in (1, 3))
+
+
+def ensure_municipality_access(
+    user: models.Erabiltzaileak | None,
+    id_udalerria: int | None,
+) -> None:
+    if is_system_admin(user):
+        return
+    if is_municipality_admin(user) and user.id_udalerria == id_udalerria:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Ez duzu udalerri honetara sartzeko baimenik.",
+    )
+
+
+def ensure_takilla_access(
+    db: Session,
+    user: models.Erabiltzaileak | None,
+    id_takilla: int,
+) -> models.Takillak:
+    takilla = db.get(models.Takillak, id_takilla)
+    if not takilla:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ez da kargagunea aurkitu",
+        )
+    ensure_municipality_access(user, takilla.id_udalerria)
+    return takilla
+
+
+def ensure_reservation_access(
+    db: Session,
+    user: models.Erabiltzaileak | None,
+    erreserba: models.Erreserbak,
+) -> None:
+    if is_system_admin(user):
+        return
+    takilla = db.get(models.Takillak, erreserba.id_hasiera_takilla)
+    ensure_municipality_access(user, takilla.id_udalerria if takilla else None)
+
+
 def get_all_erabiltzaileak(db: Session):
     try:
         stmt = select(models.Erabiltzaileak).order_by(models.Erabiltzaileak.id_erab)
-        return db.scalars(stmt).all()
+        return [_erabiltzaile_payload(db, erabiltzaile) for erabiltzaile in db.scalars(stmt).all()]
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail="Errorea erabiltzaileak ekartzen") from e
     
-def get_all_powerbanks(db: Session):
+def get_all_powerbanks(db: Session, user: models.Erabiltzaileak | None = None):
     try:
         stmt = select(models.Powerbank).order_by(models.Powerbank.id_power)
+        if is_municipality_admin(user):
+            stmt = stmt.where(
+                models.Powerbank.id_takilla.in_(
+                    select(models.Takillak.id_takilla).where(
+                        models.Takillak.id_udalerria == user.id_udalerria
+                    )
+                )
+            )
         return db.scalars(stmt).all()
     except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail="Errorea erabiltzaileak ekartzen") from e
+        raise HTTPException(status_code=500, detail="Errorea powerbank-ak ekartzen") from e
 
-def get_available_postuak(db: Session):
+def get_available_postuak(db: Session, user: models.Erabiltzaileak | None = None):
     try:
         stmt = (
             select(models.Postuak)
+            .join(models.Takillak, models.Postuak.id_takilla == models.Takillak.id_takilla)
             .where(models.Postuak.egoera == models.PostuakEgoeraEnum.hutsa)
             .order_by(models.Postuak.id_takilla, models.Postuak.id_postu)
         )
+        if is_municipality_admin(user):
+            stmt = stmt.where(models.Takillak.id_udalerria == user.id_udalerria)
         return db.scalars(stmt).all()
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail="Errorea postu erabilgarriak ekartzen") from e
@@ -76,7 +265,23 @@ def get_erabiltzaile_id(id: int, db: Session):
     erabiltzaile = db.get(models.Erabiltzaileak, id,)
     if erabiltzaile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da existitzen")
-    return erabiltzaile
+    return _erabiltzaile_payload(db, erabiltzaile)
+
+
+def _validate_user_municipality(
+    db: Session,
+    id_rol: int,
+    id_udalerria: int | None,
+) -> int | None:
+    if id_rol == 3:
+        if not id_udalerria:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Udalerriko administratzaileak udalerri bat izan behar du.",
+            )
+        get_udalerria(db, id_udalerria)
+        return id_udalerria
+    return None
 
 
 def delete_erabiltzaile(db: Session, id: int):
@@ -99,12 +304,15 @@ def delete_erabiltzaile(db: Session, id: int):
 def post_erabiltzaile(db: Session, erabiltzaile: schemas.CreateErabiltzaile):
     datuak = erabiltzaile.model_dump()
     datuak["pasahitza"] = _hash_password(datuak["pasahitza"])
+    datuak["id_udalerria"] = _validate_user_municipality(
+        db, datuak["id_rol"], datuak.get("id_udalerria")
+    )
     db_erabiltzaile = models.Erabiltzaileak(**datuak, activo=True)
     try:
         db.add(db_erabiltzaile)
         db.commit()
         db.refresh(db_erabiltzaile)
-        return db_erabiltzaile
+        return _erabiltzaile_payload(db, db_erabiltzaile)
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(
@@ -121,7 +329,7 @@ def list_erreserbak(db: Session):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Errorea erreserbak ekartzen") from e
 
 
-def list_erreserbak_admin(db: Session):
+def list_erreserbak_admin(db: Session, user: models.Erabiltzaileak | None = None):
     try:
         stmt = (
             select(
@@ -130,13 +338,18 @@ def list_erreserbak_admin(db: Session):
                 models.Erabiltzaileak.abizenak,
                 models.Erabiltzaileak.email,
                 models.Takillak.izena,
+                models.Takillak.id_udalerria,
+                models.Udalerriak.izena,
                 models.Powerbank.karga,
             )
             .join(models.Erabiltzaileak, models.Erreserbak.id_erab == models.Erabiltzaileak.id_erab)
             .join(models.Takillak, models.Erreserbak.id_hasiera_takilla == models.Takillak.id_takilla)
+            .join(models.Udalerriak, models.Takillak.id_udalerria == models.Udalerriak.id_udalerria)
             .join(models.Powerbank, models.Erreserbak.id_power == models.Powerbank.id_power)
             .order_by(models.Erreserbak.id_erreserba)
         )
+        if is_municipality_admin(user):
+            stmt = stmt.where(models.Takillak.id_udalerria == user.id_udalerria)
 
         erreserbak = []
         for (
@@ -145,6 +358,8 @@ def list_erreserbak_admin(db: Session):
             erabiltzaile_abizenak,
             erabiltzaile_email,
             kargagune_izena,
+            id_udalerria,
+            udalerria_izena,
             powerbank_karga,
         ) in db.execute(stmt).all():
             datuak = schemas.ListErreserbak.model_validate(erreserba).model_dump()
@@ -155,6 +370,8 @@ def list_erreserbak_admin(db: Session):
                     erabiltzaile_abizenak=erabiltzaile_abizenak,
                     erabiltzaile_email=erabiltzaile_email,
                     kargagune_izena=kargagune_izena,
+                    id_udalerria=id_udalerria,
+                    udalerria_izena=udalerria_izena,
                     powerbank_karga=powerbank_karga,
                 )
             )
@@ -167,10 +384,16 @@ def list_erreserbak_admin(db: Session):
         ) from e
 
 
-def patch_erreserba_egoera(db: Session, id: int, egoera: str):
+def patch_erreserba_egoera(
+    db: Session,
+    id: int,
+    egoera: str,
+    user: models.Erabiltzaileak | None = None,
+):
     db_erreserba = db.get(models.Erreserbak, id)
     if not db_erreserba:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erreserba aurkitu")
+    ensure_reservation_access(db, user, db_erreserba)
 
     egoera_enum = models.ErreserbaEgoeraEnum(egoera)
 
@@ -203,10 +426,15 @@ def patch_erreserba_egoera(db: Session, id: int, egoera: str):
         ) from e
 
 
-def cancel_erreserba(db: Session, id: int):
+def cancel_erreserba(
+    db: Session,
+    id: int,
+    user: models.Erabiltzaileak | None = None,
+):
     db_erreserba = db.get(models.Erreserbak, id)
     if not db_erreserba:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erreserba aurkitu")
+    ensure_reservation_access(db, user, db_erreserba)
 
     if db_erreserba.egoera == models.ErreserbaEgoeraEnum.ezeztatuta:
         raise HTTPException(
@@ -241,13 +469,19 @@ def patch_erabiltzailea(db: Session, id: int, erabiltzaile: schemas.CreateErabil
     if datuak.get("pasahitza"):
         datuak["pasahitza"] = _hash_password(datuak["pasahitza"])
 
+    new_role = datuak.get("id_rol", db_erabiltzaile.id_rol)
+    new_municipality = datuak.get("id_udalerria", db_erabiltzaile.id_udalerria)
+    datuak["id_udalerria"] = _validate_user_municipality(
+        db, new_role, new_municipality
+    )
+
     for field, value in datuak.items():
         setattr(db_erabiltzaile, field, value)
     
     try:
         db.commit()
         db.refresh(db_erabiltzaile)
-        return db_erabiltzaile
+        return _erabiltzaile_payload(db, db_erabiltzaile)
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
@@ -256,15 +490,25 @@ def update_rola(db: Session, id: int, rola: int):
     db_erabiltzaile = db.get(models.Erabiltzaileak, id)
     if not db_erabiltzaile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
-    
+    if rola not in (1, 2, 3):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rolak ez du balio.")
+    if rola == 3 and not db_erabiltzaile.id_udalerria:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Udalerriko administratzaileak udalerri bat behar du.",
+        )
+
     db_erabiltzaile.id_rol = rola
+    if rola != 3:
+        db_erabiltzaile.id_udalerria = None
     
     try:
         db.commit()
         db.refresh(db_erabiltzaile)
-        return db_erabiltzaile
+        return _erabiltzaile_payload(db, db_erabiltzaile)
     except IntegrityError as e:
-        raise HTTPException(status_code=status.HTTP_400, detail="Errorea") from e
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
     
 def list_erabiltzaile_erreserba(db: Session, id: int):
     db_erabiltzaile = db.get(models.Erabiltzaileak, id)
@@ -275,32 +519,63 @@ def list_erabiltzaile_erreserba(db: Session, id: int):
     
     return db.scalars(stmt).all()  
     
-def create_takilla(db: Session, takilla: schemas.CreateTakilla):
+def create_takilla(
+    db: Session,
+    takilla: schemas.CreateTakilla,
+    user: models.Erabiltzaileak | None = None,
+):
     takilla_data = takilla.model_dump()
+    get_udalerria(db, takilla_data["id_udalerria"])
+    ensure_municipality_access(user, takilla_data["id_udalerria"])
     takilla_data["egoera"] = models.TakillakEgoeraEnum(takilla_data["egoera"])
     db_takilla = models.Takillak(**takilla_data)
     try:
         db.add(db_takilla)
         db.commit()
         db.refresh(db_takilla)
-        return db_takilla
+        return _takilla_payload(db, db_takilla)
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea sortzen") from e    
     
-def get_all_takillak(db: Session):
+def get_all_takillak(
+    db: Session,
+    id_udalerria: int | None = None,
+    user: models.Erabiltzaileak | None = None,
+    include_inactive: bool = False,
+):
     try:
-        stmt = select(models.Takillak).order_by(models.Takillak.id_takilla)
-        return db.scalars(stmt).all()
+        stmt = (
+            select(models.Takillak)
+            .join(models.Udalerriak, models.Takillak.id_udalerria == models.Udalerriak.id_udalerria)
+            .order_by(models.Takillak.id_takilla)
+        )
+        if not include_inactive:
+            stmt = stmt.where(models.Udalerriak.activo.is_(True))
+        if id_udalerria is not None:
+            stmt = stmt.where(models.Takillak.id_udalerria == id_udalerria)
+        if is_municipality_admin(user):
+            stmt = stmt.where(models.Takillak.id_udalerria == user.id_udalerria)
+
+        return [
+            _takilla_payload(db, takilla)
+            for takilla in db.scalars(stmt).all()
+        ]
     except SQLAlchemyError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Errorea takillak ekartzen") from e
 
 
-def get_takilla(db: Session, id: int):
+def get_takilla(db: Session, id: int, user: models.Erabiltzaileak | None = None):
     takilla = db.get(models.Takillak, id)
     if not takilla:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da kargagunea aurkitu")
-    return takilla
+    if user is not None:
+        ensure_municipality_access(user, takilla.id_udalerria)
+    else:
+        udalerria = db.get(models.Udalerriak, takilla.id_udalerria)
+        if not udalerria or not udalerria.activo:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da kargagunea aurkitu")
+    return _takilla_payload(db, takilla)
 
 
 def get_takilla_irudiak(db: Session, id_takilla: int | None = None):
@@ -322,12 +597,23 @@ def get_takilla_irudiak(db: Session, id_takilla: int | None = None):
             detail="Errorea kargaguneen irudiak ekartzen",
         ) from e
 
-def patch_takilla(db: Session, id: int, takilla: schemas.PatchTakilla):
+def patch_takilla(
+    db: Session,
+    id: int,
+    takilla: schemas.PatchTakilla,
+    user: models.Erabiltzaileak | None = None,
+):
     db_takilla = db.get(models.Takillak, id)
     if not db_takilla:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da existitzen")
-    
-    for field, value in takilla.model_dump(exclude_unset=True).items():
+    ensure_municipality_access(user, db_takilla.id_udalerria)
+
+    datuak = takilla.model_dump(exclude_unset=True)
+    if "id_udalerria" in datuak and datuak["id_udalerria"] is not None:
+        get_udalerria(db, datuak["id_udalerria"])
+        ensure_municipality_access(user, datuak["id_udalerria"])
+
+    for field, value in datuak.items():
         if field == "egoera" and value is not None:
             value = models.TakillakEgoeraEnum(value)
         setattr(db_takilla, field, value)
@@ -335,7 +621,7 @@ def patch_takilla(db: Session, id: int, takilla: schemas.PatchTakilla):
     try:
         db.commit()
         db.refresh(db_takilla)
-        return db_takilla
+        return _takilla_payload(db, db_takilla)
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Errorea") from e
@@ -350,9 +636,12 @@ def get_postuak_takillan(db: Session, id_takilla: int):
     )
     return db.scalars(stmt).all()
 
-def create_postua(db: Session, id_takilla: int):
-    if not db.get(models.Takillak, id_takilla):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da takilla aurkitu")
+def create_postua(
+    db: Session,
+    id_takilla: int,
+    user: models.Erabiltzaileak | None = None,
+):
+    ensure_takilla_access(db, user, id_takilla)
     db_postu = models.Postuak(
         id_takilla=id_takilla,
         egoera=models.PostuakEgoeraEnum.hutsa,
@@ -366,10 +655,15 @@ def create_postua(db: Session, id_takilla: int):
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Errorea postua sortzen") from e
 
-def delete_postua(db: Session, id_postu: int):
+def delete_postua(
+    db: Session,
+    id_postu: int,
+    user: models.Erabiltzaileak | None = None,
+):
     db_postu = db.get(models.Postuak, id_postu)
     if not db_postu:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da postua aurkitu")
+    ensure_takilla_access(db, user, db_postu.id_takilla)
     if db_postu.egoera != models.PostuakEgoeraEnum.hutsa:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ezin da okupatuta dagoen postua ezabatu")
 
@@ -384,7 +678,11 @@ def delete_postua(db: Session, id_postu: int):
             detail="Postua ezin da ezabatu, erreserba bati lotuta dagoelako",
         ) from e
     
-def delete_takilla(db: Session, id: int):
+def delete_takilla(
+    db: Session,
+    id: int,
+    user: models.Erabiltzaileak | None = None,
+):
     db_takilla = db.scalars(
         select(models.Takillak)
         .where(models.Takillak.id_takilla == id)
@@ -392,6 +690,7 @@ def delete_takilla(db: Session, id: int):
     ).first()
     if not db_takilla:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da aurkitu takilla")
+    ensure_municipality_access(user, db_takilla.id_udalerria)
     
     postuak = db.scalars(
         select(models.Postuak)
@@ -463,7 +762,12 @@ def delete_takilla(db: Session, id: int):
             detail="Errorea takilla ezabatzen.",
         ) from e
     
-def create_powerbank(db: Session, powerbank: schemas.CreatePowerbank):
+def create_powerbank(
+    db: Session,
+    powerbank: schemas.CreatePowerbank,
+    user: models.Erabiltzaileak | None = None,
+):
+    ensure_takilla_access(db, user, powerbank.id_takilla)
     db_postu = db.scalars(
         select(models.Postuak)
         .where(models.Postuak.id_postu == powerbank.id_postu)
@@ -487,10 +791,16 @@ def create_powerbank(db: Session, powerbank: schemas.CreatePowerbank):
         db.rollback()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea powerbank-a sortzen") from e
     
-def patch_powerbank_position(db: Session, id_power: int, powerbank: schemas.PowerbankTokiaPatch):
+def patch_powerbank_position(
+    db: Session,
+    id_power: int,
+    powerbank: schemas.PowerbankTokiaPatch,
+    user: models.Erabiltzaileak | None = None,
+):
     db_powerbank = db.get(models.Powerbank, id_power)
     if not db_powerbank:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da powerbank-a aurkitu")
+    ensure_takilla_access(db, user, db_powerbank.id_takilla)
 
     update_data = powerbank.model_dump(exclude_unset=True)
     old_postu_id = db_powerbank.id_postu
@@ -517,6 +827,7 @@ def patch_powerbank_position(db: Session, id_power: int, powerbank: schemas.Powe
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Aukeratutako postua ez da aurkitu",
                 )
+            ensure_takilla_access(db, user, new_postu.id_takilla)
             if new_postu.egoera != models.PostuakEgoeraEnum.hutsa:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
@@ -536,10 +847,15 @@ def patch_powerbank_position(db: Session, id_power: int, powerbank: schemas.Powe
         db.rollback()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Errorea powerbankaren tokia aldatzen") from e
 
-def delete_powerbank(db: Session, id_power: int):
+def delete_powerbank(
+    db: Session,
+    id_power: int,
+    user: models.Erabiltzaileak | None = None,
+):
     db_powerbank = db.get(models.Powerbank, id_power)
     if not db_powerbank:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da powerbank-a aurkitu")
+    ensure_takilla_access(db, user, db_powerbank.id_takilla)
 
     postu = db.scalars(
         select(models.Postuak)
@@ -615,10 +931,16 @@ def admin_login(db: Session, email: str, password: str):
             detail="Erabiltzailearen kontua ez dago aktibo",
         )
 
-    if db_erabiltzaile.id_rol != 1:
+    if db_erabiltzaile.id_rol not in (1, 3):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Kontu honek ez du administrazio baimenik",
+        )
+
+    if db_erabiltzaile.id_rol == 3 and not db_erabiltzaile.id_udalerria:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Udalerriko administratzaileak ez du udalerri bat esleitua.",
         )
 
     return db_erabiltzaile
@@ -703,7 +1025,11 @@ def update_erabiltzaile_publico(
         ) from e
 
 
-def create_erreserba_publico(db: Session, erreserba: schemas.ErreserbaPublicoCreate):
+def create_erreserba_publico(
+    db: Session,
+    erreserba: schemas.ErreserbaPublicoCreate,
+    user: models.Erabiltzaileak,
+):
     hasiera = erreserba.erreserba_hasiera
     bukaera = erreserba.erreserba_bukaera
 
@@ -724,10 +1050,7 @@ def create_erreserba_publico(db: Session, erreserba: schemas.ErreserbaPublicoCre
             detail="Ezin da iraganeko datarako erreserbarik egin.",
         )
 
-    db_erabiltzaile = db.get(models.Erabiltzaileak, erreserba.id_erab)
-    if not db_erabiltzaile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da erabiltzailea aurkitu")
-    if not db_erabiltzaile.activo:
+    if not user.activo:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Erabiltzailearen kontua ez dago aktibo",
@@ -736,6 +1059,12 @@ def create_erreserba_publico(db: Session, erreserba: schemas.ErreserbaPublicoCre
     db_takilla = db.get(models.Takillak, erreserba.id_hasiera_takilla)
     if not db_takilla:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ez da kargagunea aurkitu")
+    udalerria = db.get(models.Udalerriak, db_takilla.id_udalerria)
+    if not udalerria or not udalerria.activo:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Kargagunearen udalerria ez dago aktibo.",
+        )
     if db_takilla.egoera != models.TakillakEgoeraEnum.erabilgarri:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -779,7 +1108,7 @@ def create_erreserba_publico(db: Session, erreserba: schemas.ErreserbaPublicoCre
         )
 
     db_erreserba = models.Erreserbak(
-        id_erab=erreserba.id_erab,
+        id_erab=user.id_erab,
         id_power=erreserba.id_power,
         erreserba_hasiera=hasiera,
         erreserba_bukaera=bukaera,

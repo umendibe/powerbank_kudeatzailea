@@ -1,15 +1,17 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
 import { AllCommunityModule, ColDef, ICellRendererParams, ModuleRegistry } from 'ag-grid-community';
+import { AuthService } from '../auth/auth.service';
 import { ApiDeiakKargaguneak } from './api-deiak-kargaguneak';
 import {
   PostuResponse,
   TakillaCreate,
   TakillaEgoera,
-  TakillaResponse
+  TakillaResponse,
+  UdalerriaResponse
 } from './kargaguneak-interface';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -22,9 +24,18 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 })
 export class KargaguneakComponent implements OnInit {
   private readonly apiService = inject(ApiDeiakKargaguneak);
+  private readonly auth = inject(AuthService);
 
+  readonly isMunicipalityAdmin = this.auth.isMunicipalityAdmin;
+  readonly udalerriak = signal<UdalerriaResponse[]>([]);
+  readonly filterUdalerria = signal<number | null>(null);
   takillak = signal<TakillaResponse[]>([]);
   taulaErrorea = signal<string | null>(null);
+  readonly takillakFiltratuak = computed(() => {
+    const filter = this.filterUdalerria();
+    if (filter === null) return this.takillak();
+    return this.takillak().filter((takilla) => takilla.id_udalerria === filter);
+  });
   formularioa = signal(false);
   editatzenDenId = signal<number | null>(null);
   formularioaGordetzen = signal(false);
@@ -61,6 +72,23 @@ export class KargaguneakComponent implements OnInit {
     { field: 'izena', headerName: 'IZENA', filter: 'agTextColumnFilter' },
     { field: 'helbidea', headerName: 'HELBIDEA' },
     {
+      headerName: 'UDALERRIA',
+      valueGetter: params => params.data?.udalerria_izena ?? params.data?.id_udalerria ?? '',
+      filter: 'agTextColumnFilter',
+    },
+    {
+      headerName: 'KOKAPENA',
+      width: 160,
+      flex: 0,
+      valueGetter: params => {
+        const latitude = params.data?.latitude;
+        const longitude = params.data?.longitude;
+        return latitude != null && longitude != null
+          ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
+          : '—';
+      },
+    },
+    {
       field: 'egoera',
       headerName: 'EGOERA',
       valueFormatter: params => this.egoeraAukerak.find(option => option.value === params.value)?.label ?? params.value ?? ''
@@ -95,10 +123,24 @@ export class KargaguneakComponent implements OnInit {
 
   ngOnInit(): void {
     this.kargatuTakillak();
+    this.apiService.getUdalerriak(this.auth.isSystemAdmin()).subscribe({
+      next: (udalerriak) => this.udalerriak.set(udalerriak),
+      error: (error: HttpErrorResponse) => {
+        console.error('Errorea udalerriak kargatzean:', error);
+      },
+    });
   }
 
   private takillaBerria(): TakillaCreate {
-    return { izena: '', helbidea: '', egoera: 'erabilgarri' };
+    return {
+      izena: '',
+      helbidea: '',
+      deskribapena: null,
+      latitude: null,
+      longitude: null,
+      id_udalerria: this.auth.session()?.id_udalerria ?? 0,
+      egoera: 'erabilgarri',
+    };
   }
 
   private actionButton(
@@ -140,7 +182,13 @@ export class KargaguneakComponent implements OnInit {
     this.takillaDatuak = {
       izena: takilla.izena,
       helbidea: takilla.helbidea,
-      egoera: takilla.egoera
+      deskribapena: takilla.deskribapena,
+      latitude: takilla.latitude,
+      longitude: takilla.longitude,
+      id_udalerria: this.isMunicipalityAdmin()
+        ? (this.auth.session()?.id_udalerria ?? takilla.id_udalerria)
+        : takilla.id_udalerria,
+      egoera: takilla.egoera,
     };
     this.formularioErrorea.set(null);
     this.formularioa.set(true);
@@ -154,6 +202,16 @@ export class KargaguneakComponent implements OnInit {
 
   gordeTakilla(): void {
     if (this.formularioaGordetzen()) return;
+
+    if (this.isMunicipalityAdmin()) {
+      this.takillaDatuak.id_udalerria =
+        this.auth.session()?.id_udalerria ?? this.takillaDatuak.id_udalerria;
+    }
+    if (!this.takillaDatuak.id_udalerria) {
+      this.formularioErrorea.set('Aukeratu udalerri bat.');
+      return;
+    }
+
     this.formularioaGordetzen.set(true);
     this.formularioErrorea.set(null);
     const id = this.editatzenDenId();

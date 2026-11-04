@@ -15,6 +15,8 @@ export class App {
   private readonly router = inject(Router);
 
   protected readonly isLoggedIn = this.auth.isLoggedIn;
+  protected readonly isSystemAdmin = this.auth.isSystemAdmin;
+  protected readonly isMunicipalityAdmin = this.auth.isMunicipalityAdmin;
   protected readonly session = this.auth.session;
 
   logout(): void {

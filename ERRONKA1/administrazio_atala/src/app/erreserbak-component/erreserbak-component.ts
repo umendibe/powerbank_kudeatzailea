@@ -28,6 +28,7 @@ export class ErreserbakComponent implements OnInit {
   readonly taulaErrorea = signal<string | null>(null);
 
   readonly filterErabiltzaile = signal<number | null>(null);
+  readonly filterUdalerria = signal<number | null>(null);
   readonly filterKargagune = signal<number | null>(null);
   readonly filterPowerbank = signal<number | null>(null);
   readonly filterEgoera = signal<ErreserbaEgoera | ''>('');
@@ -60,6 +61,19 @@ export class ErreserbakComponent implements OnInit {
     );
   });
 
+  readonly udalerriaAukerak = computed(() => {
+    const map = new Map<number, { id_udalerria: number; izena: string }>();
+    for (const erreserba of this.erreserbak()) {
+      if (erreserba.id_udalerria != null && erreserba.udalerria_izena) {
+        map.set(erreserba.id_udalerria, {
+          id_udalerria: erreserba.id_udalerria,
+          izena: erreserba.udalerria_izena,
+        });
+      }
+    }
+    return [...map.values()].sort((a, b) => a.izena.localeCompare(b.izena));
+  });
+
   readonly kargaguneAukerak = computed(() => {
     const map = new Map<number, { id_takilla: number; izena: string }>();
 
@@ -88,6 +102,7 @@ export class ErreserbakComponent implements OnInit {
 
   readonly filteredErreserbak = computed(() => {
     const erabiltzailea = this.filterErabiltzaile();
+    const udalerria = this.filterUdalerria();
     const kargagunea = this.filterKargagune();
     const powerbank = this.filterPowerbank();
     const egoera = this.filterEgoera();
@@ -96,6 +111,10 @@ export class ErreserbakComponent implements OnInit {
 
     return this.erreserbak().filter((erreserba) => {
       if (erabiltzailea !== null && erreserba.id_erab !== erabiltzailea) {
+        return false;
+      }
+
+      if (udalerria !== null && erreserba.id_udalerria !== udalerria) {
         return false;
       }
 
@@ -127,6 +146,7 @@ export class ErreserbakComponent implements OnInit {
   readonly iragazkiakAktibo = computed(
     () =>
       this.filterErabiltzaile() !== null ||
+      this.filterUdalerria() !== null ||
       this.filterKargagune() !== null ||
       this.filterPowerbank() !== null ||
       this.filterEgoera() !== '' ||
@@ -168,6 +188,11 @@ export class ErreserbakComponent implements OnInit {
       flex: 0,
       valueFormatter: (params) =>
         `#${params.value} (${params.data?.powerbank_karga ?? '-'}%)`,
+    },
+    {
+      headerName: 'UDALERRIA',
+      valueGetter: (params) => params.data?.udalerria_izena ?? '-',
+      filter: 'agTextColumnFilter',
     },
     {
       headerName: 'KARGAGUNEA',
@@ -259,6 +284,7 @@ export class ErreserbakComponent implements OnInit {
 
   garbituIragazkiak(): void {
     this.filterErabiltzaile.set(null);
+    this.filterUdalerria.set(null);
     this.filterKargagune.set(null);
     this.filterPowerbank.set(null);
     this.filterEgoera.set('');

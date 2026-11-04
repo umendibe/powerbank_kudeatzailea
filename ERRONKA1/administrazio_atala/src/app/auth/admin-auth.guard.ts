@@ -14,6 +14,22 @@ export const adminAuthGuard: CanActivateFn = () => {
   return router.createUrlTree(['/login']);
 };
 
+// Erabiltzaileak eta udalerriak soilik administratzaile orokorrak kudea ditzake.
+export const systemAdminGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  if (auth.isSystemAdmin()) {
+    return true;
+  }
+
+  if (auth.isLoggedIn()) {
+    return router.createUrlTree(['/kargaguneak']);
+  }
+
+  return router.createUrlTree(['/login']);
+};
+
 // Administratzaileak saioa hasita badu, ez da login pantailara itzuliko.
 export const loginGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
@@ -23,5 +39,7 @@ export const loginGuard: CanActivateFn = () => {
     return true;
   }
 
-  return router.createUrlTree(['/erabiltzaileak']);
+  return router.createUrlTree([
+    auth.isSystemAdmin() ? '/erabiltzaileak' : '/kargaguneak',
+  ]);
 };

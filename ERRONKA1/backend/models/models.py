@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -17,7 +18,25 @@ class Rol(Base):
     __tablename__ = "rolak"
     
     id_rol: Mapped[int] = mapped_column(primary_key=True, index=True)
-    izena: Mapped[str] = mapped_column(String(100))
+    rol_izena: Mapped[str] = mapped_column(String(100))
+
+
+class Udalerriak(Base):
+    __tablename__ = "udalerriak"
+
+    id_udalerria: Mapped[int] = mapped_column(primary_key=True, index=True)
+    izena: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("erabiltzaileak.id_erab"), nullable=False, index=True
+    )
+
 
 class Erabiltzaileak(Base):
     __tablename__ = "erabiltzaileak"
@@ -30,6 +49,9 @@ class Erabiltzaileak(Base):
     pasahitza: Mapped[str] = mapped_column(String(200), nullable=False)
     helbidea: Mapped[str] = mapped_column(String(250), nullable=False)
     id_rol: Mapped[int] = mapped_column(ForeignKey("rolak.id_rol"), nullable=False)
+    id_udalerria: Mapped[int | None] = mapped_column(
+        ForeignKey("udalerriak.id_udalerria"), nullable=True
+    )
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False)
     
 class TakillakEgoeraEnum(str, enum.Enum):
@@ -43,6 +65,12 @@ class Takillak(Base):
     id_takilla: Mapped[int] = mapped_column(primary_key=True, index=True)
     izena: Mapped[str] = mapped_column(String(200), nullable=False)
     helbidea: Mapped[str] = mapped_column(String(250), nullable=False)
+    deskribapena: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    id_udalerria: Mapped[int] = mapped_column(
+        ForeignKey("udalerriak.id_udalerria"), nullable=False, index=True
+    )
     egoera: Mapped[TakillakEgoeraEnum] = mapped_column(Enum(TakillakEgoeraEnum, name="egoera_takillak", create_type=False), nullable=False)
     
 class TakillakIrudiak(Base):

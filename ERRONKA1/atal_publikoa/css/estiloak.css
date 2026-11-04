@@ -85,8 +85,37 @@ footer a {
   color: #fff;
 }
 
+.mapa {
+  width: 100%;
+  height: 440px;
+  min-height: 320px;
+  background: #e9ecef;
+}
+
+.mapa-popup {
+  min-width: 220px;
+  max-width: 280px;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(31, 41, 55, 0.18);
+}
+
+.leaflet-popup-content {
+  margin: 14px 16px;
+}
+
+.leaflet-container {
+  font-family: inherit;
+}
+
 @media (max-width: 575.98px) {
   .hero {
     border-radius: 0 0 1rem 1rem;
+  }
+
+  .mapa {
+    height: 340px;
   }
 }

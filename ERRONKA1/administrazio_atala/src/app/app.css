@@ -127,6 +127,15 @@
   white-space: nowrap;
 }
 
+.app-user-municipality {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(88, 86, 214, 0.1);
+  color: var(--ios-indigo);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
 .app-logout {
   display: inline-flex;
   align-items: center;

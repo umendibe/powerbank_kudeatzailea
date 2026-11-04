@@ -4,9 +4,10 @@ export interface ErabiltzaileResponse {
   izena: string;
   abizenak: string;
   email: string;
-  pasahitza: string;
   helbidea: string;
   id_rol: number;
+  id_udalerria: number | null;
+  udalerria_izena: string | null;
   activo: boolean;
 }
 
@@ -17,6 +18,7 @@ export interface ErabiltzaileEdit {
   email: string;
   helbidea: string;
   id_rol: number;
+  id_udalerria: number | null;
   activo: boolean;
 }
 
@@ -28,11 +30,19 @@ export interface ErabiltzaileCreate {
   pasahitza: string;
   helbidea: string;
   id_rol: number;
+  id_udalerria: number | null;
   activo: boolean;
 }
 
 export interface PatchErabiltzaile {
   activo: boolean;
+}
+
+export interface UdalerriaOption {
+  id_udalerria: number;
+  izena: string;
+  activo: boolean;
+  kargagune_kopurua: number;
 }
 
 export interface ListErreserbak {

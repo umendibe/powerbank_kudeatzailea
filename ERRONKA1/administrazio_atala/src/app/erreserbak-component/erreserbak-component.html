@@ -34,6 +34,20 @@
         </div>
 
         <div class="col-md-6 col-xl-3">
+          <label for="filterUdalerria" class="form-label">Udalerria</label>
+          <select
+            id="filterUdalerria"
+            class="form-select"
+            [ngModel]="filterUdalerria()"
+            (ngModelChange)="filterUdalerria.set($event)">
+            <option [ngValue]="null">Udalerri guztiak</option>
+            @for (udalerria of udalerriaAukerak(); track udalerria.id_udalerria) {
+              <option [ngValue]="udalerria.id_udalerria">{{ udalerria.izena }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
           <label for="filterKargagune" class="form-label">Kargagunea</label>
           <select
             id="filterKargagune"

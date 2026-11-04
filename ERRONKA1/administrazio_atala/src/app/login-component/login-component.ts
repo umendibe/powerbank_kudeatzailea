@@ -37,9 +37,11 @@ export class LoginComponent {
     this.errorMessage.set(null);
 
     this.auth.loginAdmin(email ?? '', password ?? '').subscribe({
-      next: () => {
+      next: (session) => {
         this.loading.set(false);
-        void this.router.navigate(['/erabiltzaileak']);
+        void this.router.navigate([
+          session.id_rol === 1 ? '/erabiltzaileak' : '/kargaguneak',
+        ]);
       },
       error: (error: HttpErrorResponse) => {
         this.loading.set(false);

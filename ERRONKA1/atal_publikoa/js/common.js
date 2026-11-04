@@ -8,7 +8,11 @@ const Session = {
       const raw = localStorage.getItem(SESSION_KEY);
       if (!raw) return null;
       const user = JSON.parse(raw);
-      return user && typeof user.id_erab === 'number' ? user : null;
+      return user &&
+        typeof user.id_erab === 'number' &&
+        typeof user.token === 'string'
+        ? user
+        : null;
     } catch {
       return null;
     }
@@ -16,6 +20,10 @@ const Session = {
 
   save(user) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  },
+
+  getToken() {
+    return this.get()?.token ?? null;
   },
 
   clear() {
@@ -43,11 +51,15 @@ function escapeHtml(value) {
   });
 }
 
-async function api(path, { method = 'GET', body } = {}) {
+async function api(path, { method = 'GET', body, auth = false } = {}) {
   const options = { method, headers: {} };
   if (body !== undefined) {
     options.headers['Content-Type'] = 'application/json';
     options.body = JSON.stringify(body);
+  }
+  const token = Session.getToken();
+  if (token && (auth || path.startsWith('/erabiltzaileak') || path.startsWith('/erreserbak'))) {
+    options.headers.Authorization = `Bearer ${token}`;
   }
 
   let response;

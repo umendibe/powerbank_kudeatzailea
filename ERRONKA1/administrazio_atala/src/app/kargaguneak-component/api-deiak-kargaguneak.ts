@@ -4,7 +4,8 @@ import { Observable } from 'rxjs';
 import {
   PostuResponse,
   TakillaCreate,
-  TakillaResponse
+  TakillaResponse,
+  UdalerriaResponse
 } from './kargaguneak-interface';
 
 @Injectable({
@@ -17,7 +18,12 @@ export class ApiDeiakKargaguneak {
   constructor(private http: HttpClient) {}
 
   getTakillak(): Observable<TakillaResponse[]> {
-    return this.http.get<TakillaResponse[]>(`${this.baseUrl}/takillak`);
+    return this.http.get<TakillaResponse[]>(`${this.baseUrl}/takillak/admin`);
+  }
+
+  getUdalerriak(admin = false): Observable<UdalerriaResponse[]> {
+    const path = admin ? 'udalerriak/admin' : 'udalerriak';
+    return this.http.get<UdalerriaResponse[]>(`${this.baseUrl}/${path}`);
   }
 
   sortuTakilla(takilla: TakillaCreate): Observable<TakillaResponse> {

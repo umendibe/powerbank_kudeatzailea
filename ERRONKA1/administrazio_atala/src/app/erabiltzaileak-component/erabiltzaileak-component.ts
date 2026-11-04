@@ -12,7 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { ApiDeiak } from './api-deiak';
-import { ErabiltzaileCreate, ErabiltzaileEdit, ErabiltzaileResponse, ListErreserbak, PatchErabiltzaile } from './erabiltzaile-interface';
+import { ErabiltzaileCreate, ErabiltzaileEdit, ErabiltzaileResponse, ListErreserbak, PatchErabiltzaile, UdalerriaOption } from './erabiltzaile-interface';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -35,6 +35,7 @@ export class ErabiltzaileakComponent implements OnInit {
   gordetzeErrorea = signal<string | null>(null);
   erabiltzaileBakarra = signal<ErabiltzaileResponse | null>(null);
   erabiltzaileak = signal<ErabiltzaileResponse[]>([]);
+  udalerriak = signal<UdalerriaOption[]>([]);
   erreserbak = signal<ListErreserbak[]>([]);
   formulario = signal<boolean>(false);
   erreserbaTaula = signal<boolean>(false);
@@ -47,6 +48,10 @@ export class ErabiltzaileakComponent implements OnInit {
 
   ngOnInit(): void {
     this.lortuInfoErabiltzaileak();
+    this.apiService.getUdalerriak().subscribe({
+      next: (udalerriak) => this.udalerriak.set(udalerriak),
+      error: (err) => console.error('Errorea udalerriak kargatzean:', err),
+    });
   }
 
   onEditUser(erabiltzaile: ErabiltzaileResponse): void {
@@ -59,6 +64,7 @@ export class ErabiltzaileakComponent implements OnInit {
       pasahitza: '', // No requerida al editar
       helbidea: erabiltzaile.helbidea,
       id_rol: erabiltzaile.id_rol,
+      id_udalerria: erabiltzaile.id_udalerria,
       activo: erabiltzaile.activo
     };
     this.errepikatuPasahitza = '';
@@ -70,6 +76,13 @@ export class ErabiltzaileakComponent implements OnInit {
     if (this.gordetzen()) return;
 
     const erab_id = this.editingUserId();
+
+    if (this.newUser.id_rol !== 3) {
+      this.newUser.id_udalerria = null;
+    } else if (!this.newUser.id_udalerria) {
+      this.gordetzeErrorea.set('Udalerriko administratzaileak udalerri bat behar du.');
+      return;
+    }
 
     if (!erab_id) {
       if (!this.newUser.pasahitza) {
@@ -93,6 +106,7 @@ export class ErabiltzaileakComponent implements OnInit {
         email: this.newUser.email,
         helbidea: this.newUser.helbidea,
         id_rol: this.newUser.id_rol,
+        id_udalerria: this.newUser.id_udalerria,
         activo: this.newUser.activo
       };
 
@@ -208,6 +222,7 @@ export class ErabiltzaileakComponent implements OnInit {
       pasahitza: '',
       helbidea: '',
       id_rol: 2,
+      id_udalerria: null,
       activo: true
     };
   }
@@ -218,13 +233,22 @@ export class ErabiltzaileakComponent implements OnInit {
     { field: 'izena', headerName: 'IZENA' },
     { field: 'abizenak', headerName: 'ABIZENAK' },
     { field: 'email', headerName: 'EMAIL' },
-    {
-      field: 'pasahitza',
-      headerName: 'PASAHITZA',
-      valueFormatter: (params) => (params.value ? '••••••••' : '—'),
-    },
     { field: 'helbidea', headerName: 'HELBIDEA' },
-    { field: 'id_rol', headerName: 'ROL ID' },
+    {
+      headerName: 'UDALERRIA',
+      valueGetter: (params) => params.data?.udalerria_izena ?? '-',
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'id_rol',
+      headerName: 'ROLA',
+      valueFormatter: (params) =>
+        params.value === 1
+          ? 'Administratzaile orokorra'
+          : params.value === 3
+            ? 'Udalerriko administratzailea'
+            : 'Erabiltzaile arrunta',
+    },
     { field: 'activo', headerName: 'AKTIBO' },
     {
       headerName: 'Akzioak',

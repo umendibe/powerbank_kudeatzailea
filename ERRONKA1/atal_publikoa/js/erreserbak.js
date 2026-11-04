@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const alerta = document.getElementById('alerta');
   const form = document.getElementById('reservationForm');
   const submitButton = form.querySelector('button[type="submit"]');
+  const udalerriaSelect = document.getElementById('udalerriaSelect');
   const kargaguneSelect = document.getElementById('kargaguneSelect');
   const postuSelect = document.getElementById('postuSelect');
   const postuLaguntza = document.getElementById('postuLaguntza');
@@ -19,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let unekoPostuak = [];
   let unekoPowerbankMap = new Map();
   let erreserbaGuztiak = [];
+  let kargaguneZerrenda = [];
 
   const today = new Date();
   const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -30,6 +32,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   kargaguneSelect.addEventListener('change', async () => {
     await kargatuPostuak(kargaguneSelect.value);
+  });
+
+  udalerriaSelect.addEventListener('change', () => {
+    renderKargaguneOptions();
+    postuSelect.value = '';
+    postuSelect.disabled = true;
+    eguneratuDisponibilitatea();
   });
 
   [postuSelect, dataInput, hasieraInput, amaieraInput].forEach((input) => {
@@ -127,23 +136,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function kargatuKargaguneak() {
     try {
-      const takillak = await api('/takillak');
-      kargaguneSelect.innerHTML = '<option value="">Aukeratu kargagunea</option>';
+      const [takillak, udalerriak] = await Promise.all([
+        api('/takillak'),
+        api('/udalerriak'),
+      ]);
 
-      for (const takilla of takillak) {
+      kargaguneZerrenda = takillak;
+      udalerriaSelect.innerHTML = '<option value="">Udalerri guztiak</option>';
+      for (const udalerria of udalerriak) {
         const option = document.createElement('option');
-        option.value = String(takilla.id_takilla);
-        option.textContent = `${takilla.izena} · ${takilla.helbidea}`;
-        option.disabled = takilla.egoera !== 'erabilgarri';
-        if (option.disabled) {
-          option.textContent += ' (ez dago erabilgarri)';
-        }
-        kargaguneSelect.appendChild(option);
+        option.value = String(udalerria.id_udalerria);
+        option.textContent = udalerria.izena;
+        udalerriaSelect.appendChild(option);
       }
 
-      const preselect = Number(
-        new URLSearchParams(location.search).get('kargagune'),
-      );
+      const params = new URLSearchParams(location.search);
+      const udaleriaParam = params.get('udalerria');
+      if (udaleriaParam) {
+        udalerriaSelect.value = udaleriaParam;
+      }
+
+      renderKargaguneOptions();
+
+      const preselect = Number(params.get('kargagune'));
       if (preselect) {
         const option = kargaguneSelect.querySelector(`option[value="${preselect}"]`);
         if (option && !option.disabled) {
@@ -153,6 +168,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (error) {
       showAlert(alerta, error.message, 'danger');
+    }
+  }
+
+  function renderKargaguneOptions() {
+    const udalerria = udalerriaSelect.value;
+    const hautatua = kargaguneSelect.value;
+    kargaguneSelect.innerHTML = '<option value="">Aukeratu kargagunea</option>';
+
+    for (const takilla of kargaguneZerrenda) {
+      if (udalerria && String(takilla.id_udalerria) !== udalerria) continue;
+      const option = document.createElement('option');
+      option.value = String(takilla.id_takilla);
+      option.textContent = `${takilla.izena} · ${takilla.helbidea}`;
+      option.disabled = takilla.egoera !== 'erabilgarri';
+      if (option.disabled) {
+        option.textContent += ' (ez dago erabilgarri)';
+      }
+      kargaguneSelect.appendChild(option);
+    }
+
+    if ([...kargaguneSelect.options].some((option) => option.value === hautatua)) {
+      kargaguneSelect.value = hautatua;
     }
   }
 

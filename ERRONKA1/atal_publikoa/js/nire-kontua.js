@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         body,
       });
 
-      Session.save(updated);
+      Session.save({ ...updated, token: user.token });
       document.getElementById('pasahitza').value = '';
       document.getElementById('profileHello').textContent =
         `Kaixo, ${updated.izena} ${updated.abizenak}.`;
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = Session.get();
     try {
       const profile = await api(`/erabiltzaileak/${user.id_erab}/nire-datuak`);
-      Session.save(profile);
+      Session.save({ ...profile, token: user.token });
 
       document.getElementById('nan').value = profile.nan;
       document.getElementById('izena').value = profile.izena;

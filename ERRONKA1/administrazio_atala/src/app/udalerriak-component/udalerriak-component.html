@@ -1,0 +1,100 @@
+<div class="grid-container">
+  <div class="ios-page-header">
+    <div>
+      <span class="ios-page-eyebrow">Administrazioa</span>
+      <h2 class="ios-page-title">Udalerriak</h2>
+      <p class="ios-page-subtitle">
+        Udalerriak sortu, berrizendatu eta aktibatu edo desaktibatu.
+      </p>
+    </div>
+    <div class="ios-page-actions">
+      <button type="button" class="btn btn-primary" (click)="sortu()">
+        <i class="bi bi-plus-lg me-1"></i>Udalerri berria
+      </button>
+    </div>
+  </div>
+
+  @if (errorea()) {
+    <div class="alert alert-danger" role="alert">{{ errorea() }}</div>
+  }
+
+  @if (kargatzen()) {
+    <div class="card border-0 shadow-sm p-5 text-center">
+      <span class="spinner-border text-primary mx-auto mb-3" role="status"></span>
+      <span class="text-muted">Udalerriak kargatzen...</span>
+    </div>
+  } @else if (udalerriak().length === 0) {
+    <div class="alert alert-info">Oraindik ez dago udalerririk.</div>
+  } @else {
+    <div class="card border-0 shadow-sm overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th class="ps-4">ID</th>
+              <th>Udalerria</th>
+              <th>Kargaguneak</th>
+              <th>Egoera</th>
+              <th class="text-end pe-4">Akzioak</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (udalerria of udalerriak(); track udalerria.id_udalerria) {
+              <tr>
+                <td class="ps-4 text-muted">#{{ udalerria.id_udalerria }}</td>
+                <td class="fw-semibold">{{ udalerria.izena }}</td>
+                <td>
+                  <span class="badge text-bg-light border">{{ udalerria.kargagune_kopurua }} kargagune</span>
+                </td>
+                <td>
+                  <span class="badge rounded-pill" [class]="udalerria.activo ? 'text-bg-success' : 'text-bg-secondary'">
+                    {{ udalerria.activo ? 'Aktiboa' : 'Desaktibatuta' }}
+                  </span>
+                </td>
+                <td class="text-end pe-4">
+                  <div class="d-inline-flex gap-2">
+                    <button type="button" class="btn btn-success btn-sm" title="Editatu" (click)="editatu(udalerria)">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm" [ngClass]="udalerria.activo ? 'btn-warning' : 'btn-secondary'"
+                      [title]="udalerria.activo ? 'Desaktibatu' : 'Aktibatu'" (click)="aldatuEgoera(udalerria)">
+                      <i class="bi" [ngClass]="udalerria.activo ? 'bi-pause-circle' : 'bi-check-circle'"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>
+
+@if (formularioa()) {
+  <div class="modal-backdrop fade show"></div>
+  <dialog open class="modal-dialog-custom card p-4 shadow-lg">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="m-0">{{ editatzenDenId() === null ? 'Udalerri berria' : 'Udalerria editatu' }}</h5>
+      <button type="button" class="btn-close" aria-label="Itxi" [disabled]="gordetzen()" (click)="itxi()"></button>
+    </div>
+
+    <form (ngSubmit)="gorde()">
+      <div class="mb-3">
+        <label for="udalerriaIzena" class="form-label">Izena</label>
+        <input id="udalerriaIzena" name="izena" class="form-control" [(ngModel)]="izena" required minlength="2" maxlength="120" />
+      </div>
+
+      @if (formularioErrorea()) {
+        <div class="alert alert-danger" role="alert">{{ formularioErrorea() }}</div>
+      }
+
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <button type="button" class="btn btn-secondary" [disabled]="gordetzen()" (click)="itxi()">Utzi</button>
+        <button type="submit" class="btn btn-primary" [disabled]="gordetzen() || izena.trim().length < 2">
+          {{ gordetzen() ? 'Gordetzen...' : 'Gorde' }}
+        </button>
+      </div>
+    </form>
+  </dialog>
+}

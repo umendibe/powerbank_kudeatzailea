@@ -7,6 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/placeholder.svg" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet" />
   <link rel="stylesheet" href="css/estiloak.css" />
 </head>
 <body data-page="kargaguneak">
@@ -39,6 +40,19 @@
       </div>
     </section>
 
+    <section class="container pb-4" id="mapaAtala">
+      <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+        <div>
+          <h2 class="h3 mb-1">Kargaguneen mapa</h2>
+          <p class="text-muted mb-0">Aukeratu udalerria eta aurkitu kargaguneak mapan.</p>
+        </div>
+        <span class="text-muted small" id="mapaEmaitza"></span>
+      </div>
+      <div class="card border-0 shadow-sm overflow-hidden">
+        <div id="mapa" class="mapa" role="application" aria-label="Kargaguneen mapa interaktiboa"></div>
+      </div>
+    </section>
+
     <section class="container pb-5" id="kargaguneak">
       <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
         <div>
@@ -51,14 +65,20 @@
       <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
           <div class="row g-3 align-items-end">
-            <div class="col-md-6">
+            <div class="col-md-6 col-xl-4">
               <label for="bilaketa" class="form-label">Bilatu izen edo helbidearen arabera</label>
               <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input id="bilaketa" type="search" class="form-control" placeholder="Adibidez: erdialdea" />
               </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6 col-xl-3">
+              <label for="udalerriaFilter" class="form-label">Udalerria</label>
+              <select id="udalerriaFilter" class="form-select">
+                <option value="">Udalerri guztiak</option>
+              </select>
+            </div>
+            <div class="col-md-6 col-xl-3">
               <label for="egoeraFilter" class="form-label">Egoera</label>
               <select id="egoeraFilter" class="form-select">
                 <option value="">Egoera guztiak</option>
@@ -67,7 +87,7 @@
                 <option value="zerbitzuz_kanpo">Zerbitzuz kanpo</option>
               </select>
             </div>
-            <div class="col-md-2 d-grid">
+            <div class="col-md-6 col-xl-2 d-grid">
               <button id="garbituFilter" type="button" class="btn btn-outline-secondary">
                 <i class="bi bi-x-lg me-1"></i>Garbitu
               </button>
@@ -107,6 +127,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/common.js"></script>
   <script src="js/index.js"></script>
 </body>

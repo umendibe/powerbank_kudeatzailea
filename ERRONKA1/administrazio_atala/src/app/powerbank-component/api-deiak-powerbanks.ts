@@ -12,7 +12,7 @@ export class ApiDeiakPowerbanks {
     constructor(private http: HttpClient) { }
 
     getInfoPowerbanks(): Observable<PowerbankResponse[]> {
-        const url = `http://${this.host}/alokaziosistema/powerbanks`;
+        const url = `http://${this.host}/alokaziosistema/powerbanks/admin`;
         return this.http.get<PowerbankResponse[]>(url);
     }
 

@@ -1,6 +1,9 @@
 let kargaguneak = [];
+let udalerriak = [];
 let irudiakMap = new Map();
 let xehetasunModal = null;
+let mapa = null;
+let markagailuGeruza = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   const alerta = document.getElementById('alerta');
@@ -15,10 +18,14 @@ document.addEventListener('DOMContentLoaded', () => {
     ? 'erreserbak.html'
     : `login.html?next=${encodeURIComponent('erreserbak.html')}`;
 
+  initMapa();
+
   document.getElementById('bilaketa').addEventListener('input', renderKargaguneak);
+  document.getElementById('udalerriaFilter').addEventListener('change', renderKargaguneak);
   document.getElementById('egoeraFilter').addEventListener('change', renderKargaguneak);
   document.getElementById('garbituFilter').addEventListener('click', () => {
     document.getElementById('bilaketa').value = '';
+    document.getElementById('udalerriaFilter').value = '';
     document.getElementById('egoeraFilter').value = '';
     renderKargaguneak();
   });
@@ -35,12 +42,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function kargatuKargaguneak(alerta) {
   try {
-    const [takillak, irudiak] = await Promise.all([
+    const [takillak, irudiak, udalerriZerrenda] = await Promise.all([
       api('/takillak'),
       api('/takillak/irudiak'),
+      api('/udalerriak'),
     ]);
 
     kargaguneak = takillak;
+    udalerriak = udalerriZerrenda;
     irudiakMap = new Map();
     for (const irudia of irudiak) {
       if (!irudiakMap.has(irudia.id_takilla)) {
@@ -49,6 +58,7 @@ async function kargatuKargaguneak(alerta) {
       irudiakMap.get(irudia.id_takilla).push(irudia);
     }
 
+    renderUdalerriaFilter();
     renderKargaguneak();
   } catch (error) {
     showAlert(alerta, error.message, 'danger');
@@ -57,20 +67,62 @@ async function kargatuKargaguneak(alerta) {
   }
 }
 
+function renderUdalerriaFilter() {
+  const select = document.getElementById('udalerriaFilter');
+  const unekoa = select.value;
+  select.innerHTML = '<option value="">Udalerri guztiak</option>';
+  for (const udalerria of udalerriak) {
+    const option = document.createElement('option');
+    option.value = String(udalerria.id_udalerria);
+    option.textContent = udalerria.izena;
+    select.appendChild(option);
+  }
+  if ([...select.options].some((option) => option.value === unekoa)) {
+    select.value = unekoa;
+  }
+}
+
+function initMapa() {
+  const element = document.getElementById('mapa');
+  if (!element || !window.L) return;
+
+  mapa = L.map(element, {
+    zoomControl: true,
+    scrollWheelZoom: false,
+  }).setView([43.0, -2.5], 8);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap',
+  }).addTo(mapa);
+
+  markagailuGeruza = L.layerGroup().addTo(mapa);
+
+  element.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-map-detail-id]');
+    if (button) {
+      openXehetasunak(Number(button.dataset.mapDetailId));
+    }
+  });
+}
+
 function renderKargaguneak() {
   const bilaketa = document.getElementById('bilaketa').value.trim().toLowerCase();
+  const udalerria = document.getElementById('udalerriaFilter').value;
   const egoera = document.getElementById('egoeraFilter').value;
   const zerrenda = document.getElementById('kargaguneZerrenda');
   const kopurua = document.getElementById('emaitzaKopurua');
 
   const filtratuak = kargaguneak.filter((takilla) => {
-    const testua = `${takilla.izena} ${takilla.helbidea}`.toLowerCase();
+    const testua = `${takilla.izena} ${takilla.helbidea} ${takilla.udalerria_izena ?? ''}`.toLowerCase();
     if (bilaketa && !testua.includes(bilaketa)) return false;
+    if (udalerria && String(takilla.id_udalerria) !== udalerria) return false;
     if (egoera && takilla.egoera !== egoera) return false;
     return true;
   });
 
   kopurua.textContent = `${filtratuak.length} kargagune`;
+  renderMapa(filtratuak);
 
   if (!filtratuak.length) {
     zerrenda.innerHTML = `
@@ -103,8 +155,11 @@ function renderKargaguneak() {
                 <h3 class="h5 mb-0">${escapeHtml(takilla.izena)}</h3>
                 ${badge(state.label, state.css, state.icon)}
               </div>
-              <p class="text-muted small mb-3">
+              <p class="text-muted small mb-1">
                 <i class="bi bi-geo-alt me-1"></i>${escapeHtml(takilla.helbidea)}
+              </p>
+              <p class="text-muted small mb-3">
+                <i class="bi bi-buildings me-1"></i>${escapeHtml(takilla.udalerria_izena ?? 'Udalerria ezezaguna')}
               </p>
               <div class="mt-auto d-flex flex-wrap gap-2">
                 <button type="button" class="btn btn-outline-primary btn-sm" data-detail-id="${takilla.id_takilla}">
@@ -119,6 +174,67 @@ function renderKargaguneak() {
         </div>`;
     })
     .join('');
+}
+
+function renderMapa(filtratuak) {
+  const emaitza = document.getElementById('mapaEmaitza');
+  if (!mapa || !markagailuGeruza) return;
+
+  markagailuGeruza.clearLayers();
+  const kokatuak = filtratuak.filter(
+    (takilla) =>
+      takilla.latitude != null &&
+      takilla.longitude != null &&
+      Number.isFinite(Number(takilla.latitude)) &&
+      Number.isFinite(Number(takilla.longitude)),
+  );
+
+  emaitza.textContent = `${kokatuak.length} kargagune mapan`;
+
+  if (!kokatuak.length) {
+    mapa.setView([43.0, -2.5], 8);
+    return;
+  }
+
+  const puntuak = [];
+  for (const takilla of kokatuak) {
+    const state = egoeraTakilla(takilla.egoera);
+    const reserveHref = Session.get()
+      ? `erreserbak.html?kargagune=${takilla.id_takilla}`
+      : `login.html?next=${encodeURIComponent(`erreserbak.html?kargagune=${takilla.id_takilla}`)}`;
+
+    const popup = `
+      <div class="mapa-popup">
+        <h6 class="mb-1">${escapeHtml(takilla.izena)}</h6>
+        <p class="text-muted small mb-1">
+          <i class="bi bi-buildings me-1"></i>${escapeHtml(takilla.udalerria_izena ?? 'Udalerria ezezaguna')}
+        </p>
+        <p class="text-muted small mb-2">
+          <i class="bi bi-geo-alt me-1"></i>${escapeHtml(takilla.helbidea)}
+        </p>
+        ${takilla.deskribapena ? `<p class="small mb-2">${escapeHtml(takilla.deskribapena)}</p>` : ''}
+        <div class="mb-2">${badge(state.label, state.css, state.icon)}</div>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-primary btn-sm" data-map-detail-id="${takilla.id_takilla}">
+            <i class="bi bi-list-check me-1"></i>Erabilgarritasuna
+          </button>
+          <a class="btn btn-primary btn-sm" href="${reserveHref}">
+            <i class="bi bi-calendar-plus me-1"></i>Erreserbatu
+          </a>
+        </div>
+      </div>`;
+
+    const marker = L.marker([Number(takilla.latitude), Number(takilla.longitude)])
+      .bindPopup(popup)
+      .addTo(markagailuGeruza);
+    puntuak.push(marker.getLatLng());
+  }
+
+  if (puntuak.length === 1) {
+    mapa.setView(puntuak[0], 14);
+  } else {
+    mapa.fitBounds(L.latLngBounds(puntuak), { padding: [30, 30], maxZoom: 14 });
+  }
 }
 
 async function openXehetasunak(id) {
@@ -216,6 +332,8 @@ async function openXehetasunak(id) {
       <div class="d-flex flex-wrap justify-content-between gap-2 mb-4">
         <div>
           <p class="mb-1"><i class="bi bi-geo-alt me-1 text-primary"></i>${escapeHtml(takilla.helbidea)}</p>
+          <p class="mb-1"><i class="bi bi-buildings me-1 text-primary"></i>${escapeHtml(takilla.udalerria_izena ?? 'Udalerria ezezaguna')}</p>
+          ${takilla.deskribapena ? `<p class="mb-1 text-muted small">${escapeHtml(takilla.deskribapena)}</p>` : ''}
           <p class="mb-0 text-muted small">Kargagunearen identifikatzailea: #${takilla.id_takilla}</p>
         </div>
         ${badge(state.label, state.css, state.icon)}

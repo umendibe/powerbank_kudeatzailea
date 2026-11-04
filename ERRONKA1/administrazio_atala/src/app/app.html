@@ -21,11 +21,18 @@
 
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
           <ul class="navbar-nav app-nav-links me-auto mb-2 mb-lg-0">
-            <li class="nav-item">
-              <a class="nav-link" routerLink="/erabiltzaileak" routerLinkActive="active">
-                <i class="bi bi-people me-1"></i>Erabiltzaileak
-              </a>
-            </li>
+            @if (isSystemAdmin()) {
+              <li class="nav-item">
+                <a class="nav-link" routerLink="/erabiltzaileak" routerLinkActive="active">
+                  <i class="bi bi-people me-1"></i>Erabiltzaileak
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" routerLink="/udalerriak" routerLinkActive="active">
+                  <i class="bi bi-buildings me-1"></i>Udalerriak
+                </a>
+              </li>
+            }
             <li class="nav-item">
               <a class="nav-link" routerLink="/kargaguneak" routerLinkActive="active">
                 <i class="bi bi-geo-alt me-1"></i>Kargaguneak
@@ -49,6 +56,9 @@
                 <i class="bi bi-person-fill"></i>
               </span>
               <span class="app-user-name">{{ session()?.izena }}</span>
+              @if (isMunicipalityAdmin() && session()?.udalerria_izena) {
+                <span class="app-user-municipality">{{ session()?.udalerria_izena }}</span>
+              }
             </span>
             <button class="btn btn-sm app-logout" type="button" (click)="logout()">
               <i class="bi bi-box-arrow-right"></i>

@@ -8,6 +8,15 @@
             </p>
         </div>
         <div class="ios-page-actions">
+            @if (!isMunicipalityAdmin()) {
+                <select class="form-select" style="width: 220px" aria-label="Udalerriaren arabera iragazi"
+                    [ngModel]="filterUdalerria()" (ngModelChange)="filterUdalerria.set($event)">
+                    <option [ngValue]="null">Udalerri guztiak</option>
+                    @for (udalerria of udalerriak(); track udalerria.id_udalerria) {
+                        <option [ngValue]="udalerria.id_udalerria">{{ udalerria.izena }}</option>
+                    }
+                </select>
+            }
             <button type="button" class="btn btn-primary" (click)="sortuBerria()">
                 <i class="bi bi-plus-lg me-1"></i>Kargagune berria
             </button>
@@ -21,7 +30,7 @@
     <div class="d-flex justify-content-center w-100">
         <ag-grid-angular
             class="kargagune-grid"
-            [rowData]="takillak()"
+            [rowData]="takillakFiltratuak()"
             [columnDefs]="colDefs"
             [defaultColDef]="defaultColDef"
             [pagination]="pagination"
@@ -62,6 +71,36 @@
             @if (helbidea.invalid && (helbidea.dirty || helbidea.touched)) {
             <div class="form-text text-danger">Helbidea behar bezala bete.</div>
             }
+        </div>
+
+        <div class="mb-3">
+            <label for="id_udalerria" class="form-label">Udalerria:</label>
+            <select id="id_udalerria" name="id_udalerria" class="form-select"
+                [(ngModel)]="takillaDatuak.id_udalerria" [disabled]="isMunicipalityAdmin()" required>
+                <option [ngValue]="0">Aukeratu udalerria</option>
+                @for (udalerria of udalerriak(); track udalerria.id_udalerria) {
+                <option [ngValue]="udalerria.id_udalerria">{{ udalerria.izena }}</option>
+                }
+            </select>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label for="latitude" class="form-label">Latitudea:</label>
+                <input id="latitude" name="latitude" type="number" step="any" min="-90" max="90"
+                    class="form-control" [(ngModel)]="takillaDatuak.latitude" required />
+            </div>
+            <div class="col-6">
+                <label for="longitude" class="form-label">Longitudea:</label>
+                <input id="longitude" name="longitude" type="number" step="any" min="-180" max="180"
+                    class="form-control" [(ngModel)]="takillaDatuak.longitude" required />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="deskribapena" class="form-label">Deskribapen laburra:</label>
+            <input id="deskribapena" name="deskribapena" class="form-control" maxlength="300"
+                [(ngModel)]="takillaDatuak.deskribapena" placeholder="Adibidez: erdiguneko karga-gunea" />
         </div>
 
         <div class="mb-3">

@@ -15,6 +15,8 @@ export interface ErreserbaAdmin {
   id_hasiera_takilla: number;
   id_bukaera_takilla: number | null;
   kargagune_izena: string;
+  id_udalerria: number | null;
+  udalerria_izena: string | null;
   id_hasiera_postua: number;
   id_bukaera_postua: number | null;
   egoera: ErreserbaEgoera;
