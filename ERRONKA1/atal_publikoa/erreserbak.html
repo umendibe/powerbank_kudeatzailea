@@ -16,7 +16,8 @@
     <div class="mb-4">
       <h1 class="h3 mb-1">Erreserbak</h1>
       <p class="text-muted mb-0">
-        Aukeratu kargagunea, karga-postua eta erreserbaren eguna eta ordu-tartea.
+        Aukeratu udalerria, kargagunea eta ordu-tartea; gero, sakatu eskuineko taulan
+        erabilgarri dagoen karga-postu bat.
       </p>
     </div>
 
@@ -47,17 +48,6 @@
               </div>
 
               <div class="mb-3">
-                <label for="postuSelect" class="form-label">Karga-postua</label>
-                <select id="postuSelect" class="form-select" disabled required>
-                  <option value="">Lehenengo aukeratu kargagunea</option>
-                </select>
-                <div class="invalid-feedback">Aukeratu karga-postu bat.</div>
-                <div class="form-text" id="postuLaguntza">
-                  Postu bakoitzak bertan dagoen powerbank-a erakusten du.
-                </div>
-              </div>
-
-              <div class="mb-3">
                 <label for="data" class="form-label">Erreserbaren eguna</label>
                 <input id="data" type="date" class="form-control" required />
                 <div class="invalid-feedback">Aukeratu data bat.</div>
@@ -76,6 +66,19 @@
                 </div>
               </div>
 
+              <div id="selectedPostuCard" class="border rounded-3 p-3 mb-3 bg-light d-none">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                  <div>
+                    <div class="small text-muted">Hautatutako karga-postua</div>
+                    <div class="fw-semibold" id="selectedPostuIzena">-</div>
+                    <div class="small text-muted" id="selectedPowerbankInfo">-</div>
+                  </div>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="clearSelectedPostu">
+                    <i class="bi bi-x-lg me-1"></i>Kendu
+                  </button>
+                </div>
+              </div>
+
               <div class="alert alert-info small" role="note">
                 <i class="bi bi-info-circle me-1"></i>
                 Erreserba etorkizuneko data eta orduetarako baino ezin da egin.
@@ -83,7 +86,7 @@
 
               <div id="disponibilitatea" class="alert alert-secondary small" role="status" aria-live="polite">
                 <i class="bi bi-calendar-check me-1"></i>
-                Aukeratu kargagunea, karga-postua eta ordu-tartea erabilgarritasuna ikusteko.
+                Aukeratu kargagunea eta ordu-tartea; gero, sakatu taulan karga-postu bat.
               </div>
 
               <button type="submit" class="btn btn-primary w-100">
@@ -98,8 +101,12 @@
         <div class="card border-0 shadow-sm mb-4">
           <div class="card-body p-4">
             <h2 class="h5 mb-3">
-              <i class="bi bi-battery-charging me-1 text-primary"></i>Karga-postuen erabilgarritasuna
+              <i class="bi bi-battery-charging me-1 text-primary"></i>Karga-postuak eta powerbank-ak
             </h2>
+            <p class="text-muted small mb-3">
+              Ezarri lehenago udalerria, kargagunea eta ordu-tartea. Ondoren, sakatu
+              <strong>Aukeratu</strong> erabilgarri dagoen postu batean.
+            </p>
             <div id="postuTaula">
               <p class="text-muted mb-0">Aukeratu kargagune bat karga-postuak ikusteko.</p>
             </div>

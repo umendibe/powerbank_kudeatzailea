@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { API_BASE } from '../api-config';
 import {
   ErreserbaAdmin,
   ErreserbaEgoera,
@@ -11,7 +12,7 @@ import {
   providedIn: 'root',
 })
 export class ApiDeiakErreserbak {
-  private readonly baseUrl = 'http://localhost:8000/alokaziosistema';
+  private readonly baseUrl = API_BASE;
 
   constructor(private http: HttpClient) {}
 

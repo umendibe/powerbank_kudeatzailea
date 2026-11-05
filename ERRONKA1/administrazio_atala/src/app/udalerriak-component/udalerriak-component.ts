@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { API_BASE } from '../api-config';
 
 export interface Udalerria {
   id_udalerria: number;
@@ -18,7 +19,7 @@ export interface Udalerria {
 })
 export class UdalerriakComponent implements OnInit {
   private readonly http = inject(HttpClient);
-  private readonly api = 'http://localhost:8000/alokaziosistema/udalerriak';
+  private readonly api = `${API_BASE}/udalerriak`;
 
   readonly udalerriak = signal<Udalerria[]>([]);
   readonly kargatzen = signal(true);

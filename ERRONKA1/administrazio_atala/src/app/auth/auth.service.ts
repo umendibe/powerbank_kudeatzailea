@@ -1,6 +1,7 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, computed, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
+import { API_BASE } from '../api-config';
 
 export interface AdminSession {
   id_erab: number;
@@ -18,8 +19,8 @@ const SESSION_KEY = 'administrazio_admin_session';
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly loginUrl = 'http://localhost:8000/alokaziosistema/login/admin';
-  private readonly logoutUrl = 'http://localhost:8000/alokaziosistema/logout';
+  private readonly loginUrl = `${API_BASE}/login/admin`;
+  private readonly logoutUrl = `${API_BASE}/logout`;
 
   private readonly sessionSignal = signal<AdminSession | null>(this.readSession());
 

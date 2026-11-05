@@ -8,19 +8,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   const submitButton = form.querySelector('button[type="submit"]');
   const udalerriaSelect = document.getElementById('udalerriaSelect');
   const kargaguneSelect = document.getElementById('kargaguneSelect');
-  const postuSelect = document.getElementById('postuSelect');
-  const postuLaguntza = document.getElementById('postuLaguntza');
   const dataInput = document.getElementById('data');
   const hasieraInput = document.getElementById('hasieraOrdua');
   const amaieraInput = document.getElementById('amaieraOrdua');
   const reservationsContainer = document.getElementById('erreserbakZerrenda');
   const disponibilitatea = document.getElementById('disponibilitatea');
   const postuTaula = document.getElementById('postuTaula');
+  const selectedPostuCard = document.getElementById('selectedPostuCard');
+  const selectedPostuIzena = document.getElementById('selectedPostuIzena');
+  const selectedPowerbankInfo = document.getElementById('selectedPowerbankInfo');
+  const clearSelectedPostu = document.getElementById('clearSelectedPostu');
 
   let unekoPostuak = [];
   let unekoPowerbankMap = new Map();
   let erreserbaGuztiak = [];
   let kargaguneZerrenda = [];
+  let selectedPostuId = null;
 
   const today = new Date();
   const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -31,25 +34,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   await kargatuErreserbak();
 
   kargaguneSelect.addEventListener('change', async () => {
+    selectedPostuId = null;
     await kargatuPostuak(kargaguneSelect.value);
   });
 
   udalerriaSelect.addEventListener('change', () => {
+    selectedPostuId = null;
+    kargaguneSelect.value = '';
+    unekoPostuak = [];
+    unekoPowerbankMap = new Map();
+    erreserbaGuztiak = [];
     renderKargaguneOptions();
-    postuSelect.value = '';
-    postuSelect.disabled = true;
     eguneratuDisponibilitatea();
   });
 
-  [postuSelect, dataInput, hasieraInput, amaieraInput].forEach((input) => {
+  [dataInput, hasieraInput, amaieraInput].forEach((input) => {
     input.addEventListener('change', eguneratuDisponibilitatea);
   });
 
   postuTaula.addEventListener('click', (event) => {
     const button = event.target.closest('[data-choose-post]');
-    if (!button) return;
+    if (!button || button.disabled) return;
 
-    postuSelect.value = button.dataset.choosePost;
+    selectedPostuId = Number(button.dataset.choosePost);
+    eguneratuDisponibilitatea();
+  });
+
+  clearSelectedPostu.addEventListener('click', () => {
+    selectedPostuId = null;
     eguneratuDisponibilitatea();
   });
 
@@ -71,23 +83,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const selectedPost = postuSelect.selectedOptions[0];
-    const idPower = Number(selectedPost?.dataset.power || 0);
-    const idPostu = Number(postuSelect.value);
     const idKargagune = Number(kargaguneSelect.value);
+    const idPostu = selectedPostuId;
+    const powerbank = idPostu ? unekoPowerbankMap.get(idPostu) : null;
 
-    if (!idKargagune || !idPostu || !idPower) {
-      showAlert(alerta, 'Aukeratu kargagunea eta karga-postua.', 'danger');
+    if (!idKargagune || !idPostu || !powerbank) {
+      showAlert(
+        alerta,
+        'Aukeratu kargagunea eta, ondoren, sakatu taulan karga-postu bat.',
+        'danger',
+      );
       return;
     }
 
     const tarte = lortuTartea();
     if (!tarte || tarte.error) {
-      showAlert(alerta, tarte?.error || 'Aukeratu eguna, hasiera-ordua eta amaiera-ordua.', 'danger');
+      showAlert(
+        alerta,
+        tarte?.error || 'Aukeratu eguna, hasiera-ordua eta amaiera-ordua.',
+        'danger',
+      );
       return;
     }
 
-    if (duGatazka(idPostu, idPower, tarte.hasiera, tarte.amaiera)) {
+    if (duGatazka(idPostu, powerbank.id_power, tarte.hasiera, tarte.amaiera)) {
       showAlert(
         alerta,
         'Aukeratutako karga-postuak beste erreserba bat du ordu-tarte horretan. Aukeratu beste postu edo tarte bat.',
@@ -104,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         method: 'POST',
         body: {
           id_erab: user.id_erab,
-          id_power: idPower,
+          id_power: powerbank.id_power,
           erreserba_hasiera: tarte.hasiera.toISOString(),
           erreserba_bukaera: tarte.amaiera.toISOString(),
           id_hasiera_takilla: idKargagune,
@@ -118,7 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'success',
       );
 
-      postuSelect.value = '';
+      selectedPostuId = null;
       hasieraInput.value = '';
       amaieraInput.value = '';
       form.classList.remove('was-validated');
@@ -194,15 +213,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function kargatuPostuak(kargaguneId) {
-    postuSelect.disabled = true;
-    postuSelect.innerHTML = '<option value="">Aukeratu karga-postua</option>';
-    postuLaguntza.textContent = 'Postu bakoitzak bertan dagoen powerbank-a erakusten du.';
+    selectedPostuId = null;
     unekoPostuak = [];
     unekoPowerbankMap = new Map();
     erreserbaGuztiak = [];
 
     if (!kargaguneId) {
-      postuSelect.innerHTML = '<option value="">Lehenengo aukeratu kargagunea</option>';
       eguneratuDisponibilitatea();
       return;
     }
@@ -219,37 +235,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         powerbanks.map((powerbank) => [powerbank.id_postu, powerbank]),
       );
       erreserbaGuztiak = erreserbak;
-
-      const erabilgarriak = postuak.filter((postu) =>
-        unekoPowerbankMap.has(postu.id_postu),
-      );
-
-      if (!erabilgarriak.length) {
-        postuSelect.innerHTML =
-          '<option value="">Ez dago powerbank-ik kargagune honetan</option>';
-        postuLaguntza.textContent =
-          'Kargagune honetan ez dago une honetan erreserbatzeko powerbank-ik.';
-        eguneratuDisponibilitatea();
-        return;
-      }
-
-      postuSelect.innerHTML = '<option value="">Aukeratu karga-postua</option>';
-      for (const postu of erabilgarriak) {
-        const powerbank = unekoPowerbankMap.get(postu.id_postu);
-        const option = document.createElement('option');
-        option.value = String(postu.id_postu);
-        option.dataset.power = String(powerbank.id_power);
-        option.textContent = `Postua #${postu.id_postu} · Powerbank #${powerbank.id_power} (${powerbank.karga}%)`;
-        postuSelect.appendChild(option);
-      }
-
-      postuSelect.disabled = false;
-      postuLaguntza.textContent = `${erabilgarriak.length} karga-postu erabilgarri.`;
-      eguneratuDisponibilitatea();
     } catch (error) {
       showAlert(alerta, error.message, 'danger');
-      eguneratuDisponibilitatea();
     }
+
+    eguneratuDisponibilitatea();
   }
 
   function lortuTartea() {
@@ -304,13 +294,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function eguneratuDisponibilitatea() {
     const tarte = lortuTartea();
+    renderSelectedPostu();
     postuTaula.innerHTML = renderPostuTaula(tarte);
 
     if (!kargaguneSelect.value) {
       setDisponibilitatea(
         'secondary',
         'calendar-check',
-        'Aukeratu kargagunea, karga-postua eta ordu-tartea erabilgarritasuna ikusteko.',
+        'Aukeratu kargagune bat eta ordu-tartea; gero, sakatu taulan karga-postu bat.',
       );
       return;
     }
@@ -324,11 +315,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    if (!postuSelect.value) {
+    if (!selectedPostuId) {
       setDisponibilitatea(
         'secondary',
-        'calendar-check',
-        'Aukeratu karga-postu bat eta ordu-tartea erabilgarritasuna ikusteko.',
+        'hand-index',
+        'Sakatu "Aukeratu" eskuineko taulan erabilgarri dagoen karga-postu batean.',
       );
       return;
     }
@@ -347,7 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const powerbank = unekoPowerbankMap.get(Number(postuSelect.value));
+    const powerbank = unekoPowerbankMap.get(selectedPostuId);
     if (!powerbank) {
       setDisponibilitatea(
         'danger',
@@ -359,7 +350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (
       duGatazka(
-        Number(postuSelect.value),
+        selectedPostuId,
         powerbank.id_power,
         tarte.hasiera,
         tarte.amaiera,
@@ -380,6 +371,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     );
   }
 
+  function renderSelectedPostu() {
+    const powerbank = selectedPostuId
+      ? unekoPowerbankMap.get(selectedPostuId)
+      : null;
+
+    if (!selectedPostuId || !powerbank) {
+      if (selectedPostuId && !powerbank) {
+        selectedPostuId = null;
+      }
+      selectedPostuCard.classList.add('d-none');
+      selectedPostuIzena.textContent = '-';
+      selectedPowerbankInfo.textContent = '-';
+      return;
+    }
+
+    selectedPostuCard.classList.remove('d-none');
+    selectedPostuIzena.textContent = `Postua #${selectedPostuId}`;
+    selectedPowerbankInfo.textContent = `Powerbank #${powerbank.id_power} · ${powerbank.karga}% karga`;
+  }
+
   function renderPostuTaula(tarte) {
     if (!kargaguneSelect.value) {
       return '<p class="text-muted mb-0">Aukeratu kargagune bat karga-postuak ikusteko.</p>';
@@ -395,10 +406,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       .map((postu) => {
         const powerbank = unekoPowerbankMap.get(postu.id_postu);
         const state = egoeraPostua(postu.egoera);
+        let okupatuta = false;
         let erabilgarritasuna = badge('Aukeratu ordua', 'secondary', 'clock');
 
         if (powerbank && tarteBaliozkoa) {
-          const okupatuta = duGatazka(
+          okupatuta = duGatazka(
             postu.id_postu,
             powerbank.id_power,
             tarte.hasiera,
@@ -411,22 +423,23 @@ document.addEventListener('DOMContentLoaded', async () => {
           erabilgarritasuna = badge('Powerbankik gabe', 'secondary', 'battery');
         }
 
+        const selected = selectedPostuId === postu.id_postu;
+        const action = !powerbank
+          ? '<span class="text-muted small">-</span>'
+          : selected
+            ? '<span class="badge text-bg-success"><i class="bi bi-check2 me-1"></i>Hautatuta</span>'
+            : `<button type="button" class="btn btn-outline-primary btn-sm" data-choose-post="${postu.id_postu}" ${okupatuta ? 'disabled' : ''}>
+                 <i class="bi bi-check2 me-1"></i>Aukeratu
+               </button>`;
+
         return `
-          <tr>
+          <tr class="${selected ? 'table-active' : ''}">
             <td class="fw-semibold">#${postu.id_postu}</td>
             <td>${badge(state.label, state.css, state.icon)}</td>
             <td>${powerbank ? `#${powerbank.id_power}` : '<span class="text-muted">-</span>'}</td>
             <td>${powerbank ? `${powerbank.karga}%` : '<span class="text-muted">-</span>'}</td>
             <td>${erabilgarritasuna}</td>
-            <td class="text-end">
-              ${
-                powerbank
-                  ? `<button type="button" class="btn btn-outline-primary btn-sm" data-choose-post="${postu.id_postu}">
-                       <i class="bi bi-check2 me-1"></i>Aukeratu
-                     </button>`
-                  : '<span class="text-muted small">-</span>'
-              }
-            </td>
+            <td class="text-end">${action}</td>
           </tr>`;
       })
       .join('');

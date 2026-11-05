@@ -22,6 +22,12 @@ export interface TakillaCreate {
   egoera: TakillaEgoera;
 }
 
+export interface TakillaIrudia {
+  id_irudi: number;
+  id_takilla: number;
+  url: string;
+}
+
 export interface UdalerriaResponse {
   id_udalerria: number;
   izena: string;

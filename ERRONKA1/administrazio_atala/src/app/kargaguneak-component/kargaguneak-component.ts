@@ -10,6 +10,7 @@ import {
   PostuResponse,
   TakillaCreate,
   TakillaEgoera,
+  TakillaIrudia,
   TakillaResponse,
   UdalerriaResponse
 } from './kargaguneak-interface';
@@ -50,6 +51,11 @@ export class KargaguneakComponent implements OnInit {
   postuaEzabatzenId = signal<number | null>(null);
   postuenErrorea = signal<string | null>(null);
   aukeratutakoTakillaPostuak = signal<TakillaResponse | null>(null);
+  irudiak = signal<TakillaIrudia[]>([]);
+  irudiakKargatzen = signal(false);
+  irudiakErrorea = signal<string | null>(null);
+  irudiaIgotzen = signal(false);
+  aukeratutakoTakillaIrudiak = signal<TakillaResponse | null>(null);
 
   readonly egoeraAukerak: { value: TakillaEgoera; label: string }[] = [
     { value: 'erabilgarri', label: 'Erabilgarri' },
@@ -108,6 +114,7 @@ export class KargaguneakComponent implements OnInit {
         container.append(
           this.actionButton('btn-success', 'bi-pencil', 'Datuak aldatu', () => this.editatu(takilla)),
           this.actionButton('btn-info', 'bi-grid-3x3', 'Postuak kudeatu', () => this.postuakKudeatu(takilla)),
+          this.actionButton('btn-secondary', 'bi-images', 'Irudiak', () => this.irudiakKudeatu(takilla)),
           this.actionButton(
             takilla.egoera === 'zerbitzuz_kanpo' ? 'btn-secondary' : 'btn-warning',
             takilla.egoera === 'zerbitzuz_kanpo' ? 'bi-check-circle' : 'bi-pause-circle',
@@ -339,6 +346,75 @@ export class KargaguneakComponent implements OnInit {
         this.postuaEzabatzenId.set(null);
       }
     });
+  }
+
+  irudiakKudeatu(takilla: TakillaResponse): void {
+    this.aukeratutakoTakillaIrudiak.set(takilla);
+    this.irudiak.set([]);
+    this.irudiakErrorea.set(null);
+    this.kargatuIrudiak(takilla.id_takilla);
+  }
+
+  itxiIrudiak(): void {
+    this.aukeratutakoTakillaIrudiak.set(null);
+    this.irudiakErrorea.set(null);
+  }
+
+  private kargatuIrudiak(idTakilla: number): void {
+    this.irudiakKargatzen.set(true);
+    this.apiService.getIrudiak(idTakilla).subscribe({
+      next: irudiak => {
+        this.irudiak.set(irudiak);
+        this.irudiakKargatzen.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        console.error('Errorea irudiak kargatzean:', error);
+        this.irudiakErrorea.set(this.errorMezua(error, 'Ezin izan dira irudiak kargatu.'));
+        this.irudiakKargatzen.set(false);
+      }
+    });
+  }
+
+  irudiaIgo(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const takilla = this.aukeratutakoTakillaIrudiak();
+    if (!file || !takilla || this.irudiaIgotzen()) return;
+
+    this.irudiaIgotzen.set(true);
+    this.irudiakErrorea.set(null);
+    this.apiService.sortuIrudia(takilla.id_takilla, file).subscribe({
+      next: irudia => {
+        this.irudiak.update(rows => [...rows, irudia]);
+        this.irudiaIgotzen.set(false);
+        input.value = '';
+      },
+      error: (error: HttpErrorResponse) => {
+        console.error('Errorea irudia igotzean:', error);
+        this.irudiakErrorea.set(this.errorMezua(error, 'Ezin izan da irudia igo.'));
+        this.irudiaIgotzen.set(false);
+        input.value = '';
+      }
+    });
+  }
+
+  irudiaEzabatu(irudia: TakillaIrudia): void {
+    const takilla = this.aukeratutakoTakillaIrudiak();
+    if (!takilla) return;
+    this.irudiakErrorea.set(null);
+    this.apiService.ezabatuIrudia(takilla.id_takilla, irudia.id_irudi).subscribe({
+      next: () => {
+        this.irudiak.update(rows => rows.filter(row => row.id_irudi !== irudia.id_irudi));
+      },
+      error: (error: HttpErrorResponse) => {
+        console.error('Errorea irudia ezabatzean:', error);
+        this.irudiakErrorea.set(this.errorMezua(error, 'Ezin izan da irudia ezabatu.'));
+      }
+    });
+  }
+
+  irudiUrl(url: string): string {
+    return url.startsWith('/') ? `/api${url}` : url;
   }
 
   private errorMezua(error: HttpErrorResponse, fallback: string): string {

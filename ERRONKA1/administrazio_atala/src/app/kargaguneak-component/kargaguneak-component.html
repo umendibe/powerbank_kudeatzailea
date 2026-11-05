@@ -129,6 +129,49 @@
 </dialog>
 }
 
+@if (aukeratutakoTakillaIrudiak(); as takilla) {
+<div class="modal-backdrop fade show"></div>
+<dialog open class="modal-dialog-custom modal-dialog-wide card p-4 shadow-lg">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="m-0">{{ takilla.izena }}: irudiak</h5>
+        <button type="button" class="btn-close" aria-label="Itxi" (click)="itxiIrudiak()"></button>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Irudi berria (jpg, png, webp, gif; gehienez 5 MB)</label>
+        <input type="file" class="form-control" accept="image/*"
+            [disabled]="irudiaIgotzen()" (change)="irudiaIgo($event)" />
+        @if (irudiaIgotzen()) {
+        <div class="form-text">Igotzen...</div>
+        }
+    </div>
+
+    @if (irudiakErrorea()) {
+    <div class="alert alert-danger" role="alert">{{ irudiakErrorea() }}</div>
+    }
+
+    @if (irudiakKargatzen()) {
+    <p class="text-muted">Irudiak kargatzen...</p>
+    } @else if (irudiak().length === 0) {
+    <p class="text-muted">Ez dago irudirik.</p>
+    } @else {
+    <div class="d-flex flex-wrap gap-3">
+        @for (irudia of irudiak(); track irudia.id_irudi) {
+        <div class="text-center">
+            <img [src]="irudiUrl(irudia.url)" alt="Kargagunearen irudia"
+                style="width: 150px; height: 110px; object-fit: cover; border-radius: 12px; border: 1px solid #ddd;" />
+            <div class="mt-2">
+                <button type="button" class="btn btn-danger btn-sm" (click)="irudiaEzabatu(irudia)">
+                    <i class="bi bi-trash"></i> Ezabatu
+                </button>
+            </div>
+        </div>
+        }
+    </div>
+    }
+</dialog>
+}
+
 @if (ezabatzekoTakilla(); as takilla) {
 <div class="modal-backdrop fade show"></div>
 <dialog open class="modal-dialog-custom card p-4 shadow-lg"
