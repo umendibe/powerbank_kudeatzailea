@@ -104,3 +104,12 @@ VSCode-ko LiveServer extensioarekin ireki .html fitxategiak.
 Erabiltzeko, PostgreSQL zerbitzaria eta datu-baseko eskema prestatu, backenda
 8000 portuan abiarazi, eta nahi den interfazea martxan jarri. Administrazio-atala
 4200 portuan eta atal publikoa 5500 portuan erabil daitezke.
+
+## Datu basean rolen INSERT-a
+
+```sql
+INSERT INTO rolak(id_rol, rol_izena) VALUES 
+(1, 'Admin'),
+(2, 'Erabiltzaile'),
+(3, 'Udalerria')
+```
