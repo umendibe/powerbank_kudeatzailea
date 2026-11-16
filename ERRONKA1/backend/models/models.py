@@ -71,7 +71,7 @@ class Takillak(Base):
     id_udalerria: Mapped[int] = mapped_column(
         ForeignKey("udalerriak.id_udalerria"), nullable=False, index=True
     )
-    egoera: Mapped[TakillakEgoeraEnum] = mapped_column(Enum(TakillakEgoeraEnum, name="egoera_takillak", create_type=False), nullable=False)
+    egoera: Mapped[TakillakEgoeraEnum] = mapped_column(Enum(TakillakEgoeraEnum, name="egoera_takillak"), nullable=False)
     
 class TakillakIrudiak(Base):
     __tablename__ = "takillak_irudiak"
@@ -91,7 +91,7 @@ class Postuak(Base):
     id_postu: Mapped[int] = mapped_column(primary_key=True, index=True)
     id_takilla: Mapped[int] = mapped_column(ForeignKey("takillak.id_takilla"), nullable=False)
     egoera: Mapped["PostuakEgoeraEnum"] = mapped_column(
-        Enum(PostuakEgoeraEnum, name="egoera_postuak", create_type=False),
+        Enum(PostuakEgoeraEnum, name="egoera_postuak"),
         nullable=False,
     )
     
@@ -123,6 +123,6 @@ class Erreserbak(Base):
     id_hasiera_postua: Mapped[int] = mapped_column(ForeignKey("postuak.id_postu"), nullable=False)
     id_bukaera_postua: Mapped[int] = mapped_column(ForeignKey("postuak.id_postu"), nullable=True)
     egoera: Mapped["ErreserbaEgoeraEnum"] = mapped_column(
-        Enum(ErreserbaEgoeraEnum, name="egoera_erreserba", create_type=False),
+        Enum(ErreserbaEgoeraEnum, name="egoera_erreserba"),
         nullable=False,
     )
